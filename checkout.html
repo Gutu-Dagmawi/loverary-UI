@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borrow Book - Loverary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#7C3AED',
+                        accent: '#10B981',
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="index.html" class="text-xl font-bold text-gray-900">Loverary</a>
+                </div>
+                <div class="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+                    <a href="browse.html" class="text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium">Browse</a>
+                    <a href="login.html" class="text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium">Sign In</a>
+                    <a href="signup.html" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900 mb-8">Borrow Book</h1>
+            
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Book Details</h3>
+                </div>
+                
+                <!-- Book Summary -->
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex flex-col sm:flex-row">
+                        <div class="flex-shrink-0 mb-4 sm:mb-0 sm:mr-6">
+                            <img class="h-48 w-32 object-cover rounded-lg shadow-md" src="https://via.placeholder.com/128x192/4F46E5/FFFFFF?text=Book+Cover" alt="Book Cover">
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-xl font-bold text-gray-900">Book Title</h2>
+                            <p class="text-gray-600">By Author Name</p>
+                            <div class="mt-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Available
+                                </span>
+                            </div>
+                            <p class="mt-3 text-gray-700">A brief description of the book would go here, giving the user context about what they're borrowing.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Borrowing Form -->
+                <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Borrowing Details</h3>
+                    
+                    <form class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="borrow-date" class="block text-sm font-medium text-gray-700">Borrow Date</label>
+                                <div class="mt-1">
+                                    <input type="date" id="borrow-date" name="borrow-date" required 
+                                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="return-date" class="block text-sm font-medium text-gray-700">Return By</label>
+                                <div class="mt-1">
+                                    <input type="date" id="return-date" name="return-date" required 
+                                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="terms" name="terms" type="checkbox" required 
+                                       class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="terms" class="font-medium text-gray-700">I agree to the </label>
+                                <a href="#" class="text-primary hover:text-indigo-500">Terms & Conditions</a>
+                                <p class="text-gray-500">By checking this box, you agree to return the book by the due date or face late fees.</p>
+                            </div>
+                        </div>
+
+                        <div class="pt-4">
+                            <button type="submit" 
+                                    class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                                Confirm Borrow
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="mt-8 bg-blue-50 p-4 rounded-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">Need help?</h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <p>If you have any questions about borrowing this book, please contact our support team.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white mt-12 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2023 Loverary. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Set minimum date to today for borrow date
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('borrow-date').min = today;
+            
+            // Set minimum return date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            document.getElementById('return-date').min = tomorrowStr;
+            
+            // Set default return date to 2 weeks from today
+            const twoWeeks = new Date();
+            twoWeeks.setDate(twoWeeks.getDate() + 14);
+            const twoWeeksStr = twoWeeks.toISOString().split('T')[0];
+            document.getElementById('return-date').value = twoWeeksStr;
+        });
+    </script>
+</body>
+</html>

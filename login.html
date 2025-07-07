@@ -11,9 +11,15 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script type="module" src="./src/index.js">
-
+    <script type="module">
+      import { redirectToHomeIfAuthenticated } from './src/utils/redirect.js';
+      
+      // Redirect to home if already logged in
+      document.addEventListener('DOMContentLoaded', () => {
+        redirectToHomeIfAuthenticated();
+      });
     </script>
+    <script type="module" src="./src/index.js"></script>
     <link rel="stylesheet" href="src/style.css" />
     <!-- Add loading indicator styles -->
     <style>
@@ -51,7 +57,7 @@
           <p class="mt-1 text-sm text-gray-600">Sign in to your account</p>
         </div>
         
-        <form id="loginForm" class="space-y-6" method="POST" novalidate>
+        <form id="loginForm" class="space-y-6" method="POST" novalidate onsubmit="event.preventDefault();">
           <input type="hidden" name="_token" value="{{ csrf_token() }}">
           <div class="space-y-4">
             <div>
@@ -92,7 +98,7 @@
           <div class="flex items-center">
             <input
               id="remember-me"
-              name="remember-me"
+              name="remember"
               type="checkbox"
               class="h-4 w-4 text-gray-600 focus:ring-gray-400 border-gray-300 rounded"
             />

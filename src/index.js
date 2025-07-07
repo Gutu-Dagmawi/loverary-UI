@@ -35,20 +35,49 @@ document.addEventListener('DOMContentLoaded', () => {
     loginButtonText.textContent = 'Signing in...';
     loginSpinner.classList.remove('hidden');
     
-    const formData = new FormData(loginForm);
-    const email = formData.get('email').trim();
-    const password = formData.get('password');
+    // Get the form elements
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const rememberCheckbox = document.getElementById('remember-me');
+    
+    // Get the current values
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    const remember = rememberCheckbox.checked;
+    
+    // Create a new FormData with the current values
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('remember', remember);
+    
+    console.log('Form data being sent:');
+    console.log('Email:', email);
+    console.log('Password length:', password.length);
+    console.log('Remember me:', remember);
     
     try {
       // First get the CSRF token
       await fetchCsrfToken();
       
       // Then proceed with login
-      await login(formData);
+      const data = await login(formData);
+      
+      // Store the token in localStorage
+      localStorage.setItem('auth_token', data.token);
+      
+      // Show success message
       showToast('Login successful!', 'success');
+      
+      // Get the redirect URL from sessionStorage or default to home
+      const redirectTo = sessionStorage.getItem('redirectAfterLogin') || '/';
+      sessionStorage.removeItem('redirectAfterLogin');
+      
+      // Redirect after a short delay
       setTimeout(() => {
-        redirectAfterLogin();
+        window.location.href = redirectTo;
       }, 1000);
+      
     } catch (error) {
       console.error('Login error:', error);
       showToast(error.message || 'Invalid email or password', 'error');

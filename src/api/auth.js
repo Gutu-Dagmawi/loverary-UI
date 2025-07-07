@@ -44,6 +44,25 @@ export const login = async (formData) => {
   try {
     const csrfToken = await getCsrfToken();
 
+    // Get form data
+    const email = formData.get('email');
+    const password = formData.get('password');
+    const remember = formData.get('remember') === 'true' || formData.get('remember') === true;
+    
+    // Create login data object
+    const loginData = {
+      email: email,
+      password: password,
+      remember: remember
+    };
+    
+    // Debug log the data being sent
+    console.log('Prepared login data:', {
+      email: email ? `${email.substring(0, 2)}...` : 'empty',
+      password: password ? '***' : 'empty',
+      remember: remember
+    });
+
     // Then make the login request
     const response = await fetch(`${API_BASE_URL}api/login`, {
       method: 'POST',
@@ -54,11 +73,7 @@ export const login = async (formData) => {
         'X-XSRF-TOKEN': csrfToken ? decodeURIComponent(csrfToken) : '',
       },
       credentials: 'include',
-      body: JSON.stringify({
-        email: formData.get('email'),
-        password: formData.get('password'),
-        remember: formData.get('remember') || false
-      })
+      body: JSON.stringify(loginData)
     });
 
     const data = await response.json();
