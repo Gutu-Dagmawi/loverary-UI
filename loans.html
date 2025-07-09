@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Loans | Loverary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="src/style.css" />
+    <script type="module">
+      import { requireAuth } from './src/utils/auth.js';
+      
+      // Protect this route - members only
+      document.addEventListener('DOMContentLoaded', () => {
+        requireAuth('/login.html', { memberOnly: true });
+      });
+    </script>
+    <style>
+      .spinner {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid rgba(0, 0, 0, 0.3);
+        border-radius: 50%;
+        border-top-color: black;
+        animation: spin 1s ease-in-out infinite;
+        margin: 0 auto;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-gray-50">
+    <!-- Navigation -->
+    <div id="nav"></div>
+    <main class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-8">My Loans</h1>
+      <div id="loansContainer" class="space-y-6"></div>
+      <div id="noLoansMessage" class="text-center text-gray-500 mt-12 hidden">
+        <p>You have no active loans.</p>
+      </div>
+    </main>
+    <script type="module">
+      import { renderNav, setupNavigation, setupLogoutButton } from './src/utils/nav.js';
+      import { isAuthenticated, getCurrentUser } from './src/api/auth.js';
+      import { getUserLoans, returnBook } from './src/api/loans.js';
+      import { showToast } from './src/utils/toast.js';
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        console.log("Loans page loaded");
+        // Inject nav
+        const navContainer = document.getElementById('nav');
+        if (navContainer) {
+          navContainer.innerHTML = renderNav({ active: 'loans', isAuthenticated: isAuthenticated() });
+          setupNavigation();
+          setupLogoutButton();
+        }
+
+        // Get current user
+        const user = getCurrentUser();
+        if (!user) {
+          console.log("No user found, redirecting to login");
+          window.location.href = 'login.html';
+          return;
+        }
+
+        console.log("Fetching loans for user", user);
+        // Fetch loans
+        let loans = [];
+        try {
+          loans = await getUserLoans();
+          console.log("Fetched loans:", loans);
+        } catch (err) {
+          console.error("Error fetching loans:", err);
+          document.getElementById('loansContainer').innerHTML = `<div class="text-red-500">${err.message}</div>`;
+          return;
+        }
+
+        const container = document.getElementById('loansContainer');
+        const noLoansMessage = document.getElementById('noLoansMessage');
+        if (!loans.length) {
+          noLoansMessage.classList.remove('hidden');
+          return;
+        }
+        console.log("Rendering loans:", loans);
+        // Render loan cards
+        container.innerHTML = loans.map(loan => { 
+          const dueDate = new Date(loan.due_date);
+          const today = new Date();
+          const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+          const isOverdue = daysLeft < 0;
+          const checkOutDate = new Date(loan.check_out_date);
+          const totalDays = Math.ceil((dueDate - checkOutDate) / (1000 * 60 * 60 * 24));
+          const daysPassed = Math.ceil((today - checkOutDate) / (1000 * 60 * 60 * 24));
+          const progressPercentage = Math.min(Math.max(0, (daysPassed / totalDays) * 100), 100);
+          return `
+          <div class="max-w-2xl mx-auto bg-white border border-gray-200 rounded-xl shadow-sm p-8 mb-8 flex flex-col md:flex-row md:items-center md:gap-8 transition hover:shadow-md">
+            <!-- Book Cover or Icon -->
+            <div class="w-20 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-100">
+              ${loan.cover_image
+                ? `<img src="${loan.cover_image}" alt="${loan.book_title}" class="w-full h-full object-cover">`
+                : `<svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" stroke-width="1.5"/><path d="M8 8h8M8 12h5" stroke-width="1.2"/></svg>`
+              }
+            </div>
+            <!-- Book & Loan Info -->
+            <div class="flex-1 min-w-0 flex flex-col gap-2 mt-4 md:mt-0">
+              <div class="flex items-center gap-2">
+                <span class="text-lg font-semibold text-gray-900 truncate">${loan.book_title || 'Book Title'}</span>
+                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">${loan.book_copy_barcode}</span>
+              </div>
+              <div class="text-sm text-gray-500">by ${loan.book_author || 'Unknown Author'}</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                  ${isOverdue ? 'bg-red-50 text-red-600' : daysLeft <= 2 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'} border
+                  ${isOverdue ? 'border-red-100' : daysLeft <= 2 ? 'border-yellow-100' : 'border-green-100'}">
+                  ${isOverdue ? 'Overdue' : daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Due tomorrow' : `Due in ${daysLeft} days`}
+                </span>
+                <span class="flex items-center text-xs text-gray-400 ml-2">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="16" rx="4" stroke-width="1.2"/>
+                    <path d="M8 10h8M8 14h5" stroke-width="1"/>
+                  </svg>
+                  ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <div class="w-full mt-4">
+                <div class="h-1 rounded-full bg-gray-100">
+                  <div class="h-1 rounded-full ${isOverdue ? 'bg-red-300' : daysLeft <= 2 ? 'bg-yellow-300' : 'bg-blue-200'}" style="width: ${Math.min(100, progressPercentage)}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full flex justify-center mt-8">
+            <button onclick="handleReturn('${loan.check_out_id}')" class="px-8 py-3 rounded-full bg-orange-500 text-white font-semibold text-base shadow hover:bg-orange-600 transition">
+              Return
+            </button>
+          </div>
+          `; 
+        }).join('');
+      });
+
+      // Make handleReturn available globally
+      window.handleReturn = async (checkOutId) => {
+        if (!confirm('Are you sure you want to return this book?')) {
+          return;
+        }
+
+        const button = document.querySelector(`button[onclick*="${checkOutId}"]`);
+        if (button) {
+          const originalText = button.textContent;
+          button.disabled = true;
+          button.innerHTML = '<span class="spinner"></span> Returning...';
+          
+          try {
+            await returnBook(checkOutId);
+            showToast('Book returned successfully!', 'success');
+            // Reload the page to update the loans list
+            setTimeout(() => window.location.reload(), 1000);
+          } catch (error) {
+            console.error('Error returning book:', error);
+            showToast(error.message || 'Failed to return book', 'error');
+            button.disabled = false;
+            button.textContent = originalText;
+          }
+        }
+      };
+    </script>
+  </body>
+</html>

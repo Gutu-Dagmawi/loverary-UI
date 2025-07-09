@@ -11,6 +11,14 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="src/style.css" />
+    <script type="module">
+      import { requireAuth } from './src/utils/auth.js';
+      
+      // Protect this route - members only
+      document.addEventListener('DOMContentLoaded', () => {
+        requireAuth('/login.html', { memberOnly: true });
+      });
+    </script>
     <style>
       .spinner {
         width: 1.5rem;

@@ -1,10 +1,15 @@
-import { login } from '../src/api/auth.js';
+import { login, isAuthenticated } from '../src/api/auth.js';
 import { showToast } from '../src/utils/toast.js';
-import { redirectAfterLogin } from '../src/utils/auth.js';
+import { initAuth } from '../src/utils/auth.js';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Redirect to login if not authenticated
+  if (!isAuthenticated() && !window.location.pathname.endsWith('login.html')) {
+    window.location.href = '/login.html';
+    return;
+  }
   const loginForm = document.getElementById('loginForm');
   if (!loginForm) return;
   
@@ -63,20 +68,32 @@ document.addEventListener('DOMContentLoaded', () => {
       // Then proceed with login
       const data = await login(formData);
       
-      // Store the token in localStorage
+      // Store the token and user data in localStorage
       localStorage.setItem('auth_token', data.token);
+      if (data.user) {
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+      }
       
       // Show success message
       showToast('Login successful!', 'success');
       
-      // Get the redirect URL from sessionStorage or default to home
-      const redirectTo = sessionStorage.getItem('redirectAfterLogin') || '/';
-      sessionStorage.removeItem('redirectAfterLogin');
+      // Determine redirect URL based on user type
+      let redirectTo = '/';
+      
+      // If user is an admin, redirect to admin dashboard
+      if (data.user && data.user.type === 'Admin') {
+        redirectTo = '/admin-dashboard.html';
+      } 
+      // Otherwise, use the stored redirect URL or go to home
+      else {
+        redirectTo = sessionStorage.getItem('redirectAfterLogin') || '/';
+        sessionStorage.removeItem('redirectAfterLogin');
+      }
       
       // Redirect after a short delay
       setTimeout(() => {
         window.location.href = redirectTo;
-      }, 1000);
+      }, 500);
       
     } catch (error) {
       console.error('Login error:', error);

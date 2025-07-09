@@ -1,17 +1,47 @@
-import { isAuthenticated } from '../api/auth';
+import { isAuthenticated, isAdmin, getCurrentUser } from '../api/auth';
 
 /**
  * Protects routes that require authentication
  * @param {string} redirectTo - The path to redirect to if not authenticated (default: '/login.html')
- * @returns {boolean} - True if authenticated, false otherwise
+ * @param {boolean} adminOnly - If true, only admin users are allowed
+ * @param {boolean} memberOnly - If true, only member users are allowed (takes precedence over adminOnly)
+ * @returns {boolean} - True if access is granted, false otherwise
  */
-export const requireAuth = (redirectTo = '/login.html') => {
+export const requireAuth = async (redirectTo = '/login.html', { adminOnly = false, memberOnly = false } = {}) => {
+  // Wait for DOM to be fully loaded
+  if (document.readyState !== 'complete') {
+    await new Promise(resolve => window.addEventListener('load', resolve));
+  }
+
   if (!isAuthenticated()) {
     // Store the current URL to redirect back after login
     sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
     window.location.href = redirectTo;
     return false;
   }
+
+  const user = getCurrentUser();
+  if (!user) {
+    localStorage.removeItem('auth_token');
+    sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+    window.location.href = redirectTo;
+    return false;
+  }
+  
+  // Check member-only access
+  if (memberOnly && isAdmin()) {
+    console.log('Admin access not allowed to member routes');
+    window.location.href = '/admin-dashboard.html';
+    return false;
+  }
+  
+  // Check admin-only access
+  if (adminOnly && !isAdmin()) {
+    console.log('Admin access required');
+    window.location.href = '/login.html';
+    return false;
+  }
+
   return true;
 };
 
