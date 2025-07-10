@@ -1,11 +1,23 @@
-import { login, isAuthenticated } from '../src/api/auth.js';
+import { login, isAuthenticated, logout } from '../src/api/auth.js';
 import { showToast } from '../src/utils/toast.js';
 import { initAuth } from '../src/utils/auth.js';
+import { clearAuthState, isFirstVisitAfterServerStart } from '../src/utils/authState.js';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Redirect to login if not authenticated
+  // Clear authentication state if this is the first visit after server start
+  if (isFirstVisitAfterServerStart()) {
+    clearAuthState();
+    
+    // If not already on the login page, redirect to login
+    if (!window.location.pathname.endsWith('login.html')) {
+      window.location.href = '/login.html';
+      return;
+    }
+  }
+  
+  // For subsequent visits, check authentication
   if (!isAuthenticated() && !window.location.pathname.endsWith('login.html')) {
     window.location.href = '/login.html';
     return;

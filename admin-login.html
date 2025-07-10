@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Login - Loverary</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
     <style>
       .spinner {
         width: 1.5rem;
@@ -17,9 +20,13 @@
         margin: 0 auto;
       }
       @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
-      .hidden { display: none; }
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -38,7 +45,7 @@
           <h2 class="text-2xl font-semibold text-gray-900">Admin Portal</h2>
           <p class="mt-1 text-sm text-gray-600">Please sign in to continue</p>
         </div>
-        
+
         <form id="adminLoginForm" class="space-y-6" novalidate>
           <div class="space-y-4">
             <div>
@@ -85,40 +92,41 @@
 
     <script type="module">
       import { adminLogin } from './src/api/auth.js';
-      
+
       document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('adminLoginForm');
         if (!form) return;
-        
-        form.addEventListener('submit', async (e) => {
+
+        form.addEventListener('submit', async e => {
           e.preventDefault();
-          
+
           const email = document.getElementById('admin-email')?.value;
           const password = document.getElementById('admin-password')?.value;
           const button = document.getElementById('loginButton');
           const buttonText = document.getElementById('buttonText');
           const spinner = document.getElementById('spinner');
-          
+
           if (!email || !password || !button || !buttonText || !spinner) {
             console.error('Required elements not found');
             return;
           }
-          
+
           // Show loading state
           button.disabled = true;
           buttonText.textContent = 'Signing in...';
           spinner.classList.remove('hidden');
-          
+
           try {
             const formData = new FormData();
             formData.append('email', email);
             formData.append('password', password);
-            
+
             const data = await adminLogin(formData);
             if (data && data.user && data.user.type === 'Admin') {
               console.log('Admin login successful, redirecting to dashboard');
               // Redirect to admin dashboard
-              const redirectTo = sessionStorage.getItem('redirectAfterLogin') || 'admin-dashboard.html';
+              const redirectTo =
+                sessionStorage.getItem('redirectAfterLogin') || 'admin-dashboard.html';
               window.location.href = redirectTo;
             } else {
               // Clear any partial data if user is not an admin

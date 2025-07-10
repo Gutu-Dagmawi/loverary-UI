@@ -77,13 +77,18 @@ export const renderBooks = (container, books) => {
     const bookCard = document.createElement('div');
     bookCard.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer relative group';
     
-    // Click handler for the book card - navigates to checkout page
+    // Click handler for the book card - only navigates to checkout if copies are available
     const handleCardClick = (e) => {
-      // Prevent default and stop propagation immediately
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      // Only proceed if there are available copies to borrow
+      if (!canBorrow) {
+        // If no copies available, don't navigate anywhere
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
+      }
       
+      // For available books, proceed with checkout
       const bookId = book.book_id || book.id || book.bookId;
       if (bookId) {
         // Find the first available book copy
@@ -115,8 +120,13 @@ export const renderBooks = (container, books) => {
       }
     };
     
-    // Add the click handler with capture phase to ensure it runs first
-    bookCard.addEventListener('click', handleCardClick, true);
+    // Handle click events based on availability
+    if (canBorrow) {
+      bookCard.addEventListener('click', handleCardClick, true);
+    } else {
+      bookCard.classList.add('cursor-not-allowed');
+      bookCard.style.opacity = '0.8';
+    }
     
     const coverImage = book.cover_image_url 
       ? `<div class="relative w-full h-64 overflow-hidden">
@@ -157,14 +167,39 @@ export const renderBooks = (container, books) => {
         <p class="text-sm text-gray-600 mb-2">${book.author_id || 'Unknown Author'}</p>
         <div class="flex justify-between items-center">
           <span class="text-sm text-gray-500">${book.publication_year || 'N/A'}</span>
-          <span class="text-sm font-medium ${availableCopies > 0 ? 'text-green-600' : 'text-red-600'}">
-            ${availableCopies} ${availableCopies === 1 ? 'copy' : 'copies'} available
-          </span>
         </div>
       </div>
     `;
     
     container.appendChild(bookCard);
+    
+    // Add click handler for reserve button after it's in the DOM
+    if (!canBorrow) {
+      const reserveBtn = bookCard.querySelector('.borrow-button');
+      if (reserveBtn) {
+        reserveBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const toast = document.createElement('div');
+          toast.className = 'fixed bottom-4 right-4 bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-4 rounded-lg shadow-lg max-w-sm z-50';
+          toast.innerHTML = `
+            <div class="flex items-start">
+              <svg class="h-6 w-6 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p class="font-medium">Reserve Feature Coming Soon!</p>
+                <p class="text-sm">In the meantime, please borrow a book that has available copies.</p>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(toast);
+          setTimeout(() => {
+            toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+            setTimeout(() => toast.remove(), 300);
+          }, 3000);
+        });
+      }
+    }
   });
 };
 

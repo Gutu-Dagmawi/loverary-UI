@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard - Loverary</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="src/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="src/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
     <style>
       .sidebar {
         width: 250px;
@@ -25,7 +28,8 @@
         padding: 0.75rem 1rem;
         color: #4b5563;
         border-radius: 0.375rem;
-        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+        transition-property:
+          color, background-color, border-color, text-decoration-color, fill, stroke;
         transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         transition-duration: 150ms;
       }
@@ -47,30 +51,58 @@
   </head>
   <body class="bg-gray-50 min-h-screen">
     <script type="module">
-      import { isAdmin, getCurrentUser, isAuthenticated } from './src/api/auth.js';
+      import { getCurrentUser, logout } from './src/api/auth.js';
       import { initAdminSidebar } from './src/components/AdminSidebar.js';
-      
+      import { redirectToLoginIfNotAuthenticated, ensureAdminAccess } from './src/utils/redirect.js';
+
+      // Set current date
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      const currentDateElement = document.getElementById('currentDate');
+      if (currentDateElement) {
+        currentDateElement.textContent = new Date().toLocaleDateString('en-US', options);
+      }
+
       // Check if user is authenticated and is admin
       document.addEventListener('DOMContentLoaded', async () => {
-        if (!isAuthenticated() || !isAdmin()) {
-          console.log('User is not authenticated or not an admin. Redirecting to login...');
-          // Store the current URL to redirect back after login
-          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
-          window.location.href = 'login.html';
+        try {
+          // This will handle both authentication and admin checks
+          redirectToLoginIfNotAuthenticated(window.location.pathname, true);
+          ensureAdminAccess();
+          
+          // Only proceed if all checks pass
+          console.log('User is authenticated and has admin access');
+          const admin = getCurrentUser();
+          console.log('Admin user authenticated:', admin);
+
+          // Initialize the sidebar with 'dashboard' as active
+          initAdminSidebar('dashboard');
+
+          // Initialize any other admin-specific UI here
+          initializeAdminUI();
+        } catch (error) {
+          // If we get here, a redirect is already in progress
+          console.log('Redirecting:', error.message);
           return;
         }
-        
-        // If we get here, user is authenticated and is an admin
-        const admin = getCurrentUser();
-        console.log('Admin user authenticated:', admin);
-        
-        // Initialize the sidebar with 'dashboard' as active
-        initAdminSidebar('dashboard');
-        
-        // Initialize any other admin-specific UI here
       });
+
+      function initializeAdminUI() {
+        // Set up logout functionality
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+          logoutButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+              await logout();
+              window.location.href = '/login.html';
+            } catch (error) {
+              console.error('Logout failed:', error);
+            }
+          });
+        }
+      }
     </script>
-    
+
     <!-- Sidebar will be injected here by AdminSidebar.js -->
     <div id="admin-sidebar-container"></div>
 
@@ -96,7 +128,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-green-50 text-green-600">
@@ -108,7 +140,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-yellow-50 text-yellow-600">
@@ -120,7 +152,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-red-50 text-red-600">
@@ -174,35 +206,5 @@
         </div>
       </div>
     </div>
-
-    <script type="module">
-      import { isAuthenticated, isAdmin, logout } from './src/api/auth.js';
-      
-      // Set current date
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
-
-      // Check authentication and admin status
-      document.addEventListener('DOMContentLoaded', async () => {
-        if (!isAuthenticated() || !isAdmin()) {
-          console.log('Not authenticated or not an admin, redirecting to login...');
-          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
-          window.location.href = 'login.html';
-          return;
-        }
-
-        // Set up logout functionality
-        document.getElementById('logoutButton').addEventListener('click', async (e) => {
-          e.preventDefault();
-          try {
-            await logout();
-          } catch (error) {
-            console.error('Logout error:', error);
-            // Still redirect to login page even if logout API call fails
-            window.location.href = 'login.html';
-          }
-        });
-      });
-    </script>
   </body>
 </html>

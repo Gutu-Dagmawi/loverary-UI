@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="src/style.css" />
     <script type="module">
       import { requireAuth } from './src/utils/auth.js';
-      
+
       // Protect this route - members only
       document.addEventListener('DOMContentLoaded', () => {
         requireAuth('/login.html', { memberOnly: true });
@@ -36,70 +36,151 @@
         <!-- Minimalist & Elegant Search Bar with Button -->
         <div class="max-w-2xl mx-auto mb-20">
           <form class="flex items-center gap-2" autocomplete="off">
-            <input 
+            <input
               type="text"
               id="search"
               class="flex-1 py-3 px-4 text-base text-gray-800 placeholder-gray-400 bg-white border border-gray-200 rounded-md focus:border-orange-400 focus:ring-0 focus:outline-none transition-colors duration-200 shadow-none"
               placeholder="Search books by title, author, or genre..."
+            />
+            <button
+              type="submit"
+              class="px-5 py-2.5 bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors duration-200 text-base shadow-none"
             >
-            <button type="submit" class="px-5 py-2.5 bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors duration-200 text-base shadow-none">
               Search
             </button>
           </form>
         </div>
 
         <!-- Results Summary (Hidden by default) -->
-        <div id="resultsSummary" style="display: none;" class="justify-between items-center mb-6">
-          <p class="text-sm text-gray-600">Showing <span id="resultsCount" class="font-medium">0</span> results</p>
+        <div id="resultsSummary" style="display: none" class="justify-between items-center mb-6">
+          <p class="text-sm text-gray-600">
+            Showing <span id="resultsCount" class="font-medium">0</span> results
+          </p>
         </div>
 
         <!-- Welcome Message -->
-        <div id="welcomeMessage" class="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div
+          id="welcomeMessage"
+          class="flex flex-col items-center justify-center py-20 px-4 text-center"
+        >
           <div class="max-w-md mx-auto">
             <div class="w-60 h-60 mx-auto mb-8">
               <!-- Cute SVG Book Illustration -->
-              <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="30" y="40" width="140" height="120" rx="20" fill="#FFF7ED" stroke="#FDBA74" stroke-width="4"/>
-                <rect x="45" y="55" width="110" height="90" rx="12" fill="#FDE68A" stroke="#F59E42" stroke-width="2"/>
-                <path d="M60 70 Q100 100 140 70" stroke="#F59E42" stroke-width="2" fill="none"/>
-                <ellipse cx="100" cy="120" rx="30" ry="8" fill="#FDBA74" fill-opacity="0.3"/>
-                <circle cx="80" cy="90" r="4" fill="#F59E42"/>
-                <circle cx="120" cy="90" r="4" fill="#F59E42"/>
-                <path d="M90 110 Q100 115 110 110" stroke="#F59E42" stroke-width="2" fill="none"/>
+              <svg
+                class="w-full h-full"
+                viewBox="0 0 200 200"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="30"
+                  y="40"
+                  width="140"
+                  height="120"
+                  rx="20"
+                  fill="#FFF7ED"
+                  stroke="#FDBA74"
+                  stroke-width="4"
+                />
+                <rect
+                  x="45"
+                  y="55"
+                  width="110"
+                  height="90"
+                  rx="12"
+                  fill="#FDE68A"
+                  stroke="#F59E42"
+                  stroke-width="2"
+                />
+                <path d="M60 70 Q100 100 140 70" stroke="#F59E42" stroke-width="2" fill="none" />
+                <ellipse cx="100" cy="120" rx="30" ry="8" fill="#FDBA74" fill-opacity="0.3" />
+                <circle cx="80" cy="90" r="4" fill="#F59E42" />
+                <circle cx="120" cy="90" r="4" fill="#F59E42" />
+                <path d="M90 110 Q100 115 110 110" stroke="#F59E42" stroke-width="2" fill="none" />
               </svg>
             </div>
             <h2 class="text-2xl font-bold text-gray-900 mb-2">Find Your Next Favorite Book</h2>
-            <p class="text-gray-600">Search by title, author, or genre using the search bar above. We’ll help you discover amazing reads!</p>
+            <p class="text-gray-600">
+              Search by title, author, or genre using the search bar above. We’ll help you discover
+              amazing reads!
+            </p>
           </div>
         </div>
 
         <!-- Book Grid (Initially hidden) -->
-        <div id="bookGrid" style="display: none;" class="flex flex-wrap gap-6">
+        <div id="bookGrid" style="display: none" class="flex flex-wrap gap-6">
           <!-- Book cards will be dynamically inserted here -->
         </div>
 
         <!-- Pagination (Hidden by default) -->
-        <div id="pagination" style="display: none;" class="mt-10 flex items-center justify-between border-t border-gray-200 px-4 sm:px-0">
+        <div
+          id="pagination"
+          style="display: none"
+          class="mt-10 flex items-center justify-between border-t border-gray-200 px-4 sm:px-0"
+        >
           <div class="-mt-px flex w-0 flex-1">
-            <a href="#" class="inline-flex items-center border-t-2 border-transparent pt-4 pr-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">
-              <svg class="mr-3 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M18 10a.75.75 0 01-.75.75H4.66l2.1 1.95a.75.75 0 11-1.02 1.1l-3.5-3.25a.75.75 0 010-1.1l3.5-3.25a.75.75 0 111.02 1.1l-2.1 1.95h12.59A.75.75 0 0118 10z" clip-rule="evenodd" />
+            <a
+              href="#"
+              class="inline-flex items-center border-t-2 border-transparent pt-4 pr-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            >
+              <svg
+                class="mr-3 h-5 w-5 text-gray-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M18 10a.75.75 0 01-.75.75H4.66l2.1 1.95a.75.75 0 11-1.02 1.1l-3.5-3.25a.75.75 0 010-1.1l3.5-3.25a.75.75 0 111.02 1.1l-2.1 1.95h12.59A.75.75 0 0118 10z"
+                  clip-rule="evenodd"
+                />
               </svg>
               Previous
             </a>
           </div>
           <div class="hidden md:-mt-px md:flex">
-            <a href="#" class="inline-flex items-center border-t-2 border-orange-500 px-4 pt-4 text-sm font-medium text-orange-600">1</a>
-            <a href="#" class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">2</a>
-            <a href="#" class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">3</a>
-            <span class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500">...</span>
-            <a href="#" class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">8</a>
+            <a
+              href="#"
+              class="inline-flex items-center border-t-2 border-orange-500 px-4 pt-4 text-sm font-medium text-orange-600"
+              >1</a
+            >
+            <a
+              href="#"
+              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              >2</a
+            >
+            <a
+              href="#"
+              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              >3</a
+            >
+            <span
+              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500"
+              >...</span
+            >
+            <a
+              href="#"
+              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              >8</a
+            >
           </div>
           <div class="-mt-px flex w-0 flex-1 justify-end">
-            <a href="#" class="inline-flex items-center border-t-2 border-transparent pt-4 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700">
+            <a
+              href="#"
+              class="inline-flex items-center border-t-2 border-transparent pt-4 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            >
               Next
-              <svg class="ml-3 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M2 10a.75.75 0 01.75-.75h12.59l-2.1-1.95a.75.75 0 111.02-1.1l3.5 3.25a.75.75 0 010 1.1l-3.5 3.25a.75.75 0 11-1.02-1.1l2.1-1.95H2.75A.75.75 0 012 10z" clip-rule="evenodd" />
+              <svg
+                class="ml-3 h-5 w-5 text-gray-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M2 10a.75.75 0 01.75-.75h12.59l-2.1-1.95a.75.75 0 111.02-1.1l3.5 3.25a.75.75 0 010 1.1l-3.5 3.25a.75.75 0 11-1.02-1.1l2.1-1.95H2.75A.75.75 0 012 10z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </a>
           </div>
@@ -112,7 +193,10 @@
       document.addEventListener('DOMContentLoaded', () => {
         const navContainer = document.getElementById('nav');
         if (navContainer) {
-          navContainer.innerHTML = renderNav({ active: 'browse', isAuthenticated: isAuthenticated() });
+          navContainer.innerHTML = renderNav({
+            active: 'browse',
+            isAuthenticated: isAuthenticated(),
+          });
           setupNavigation();
           setupLogoutButton();
         }

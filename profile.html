@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="src/style.css" />
     <script type="module">
       import { requireAuth } from './src/utils/auth.js';
-      
+
       // Protect this route - members only
       document.addEventListener('DOMContentLoaded', () => {
         requireAuth('/login.html', { memberOnly: true });
@@ -30,7 +30,9 @@
         margin: 0 auto;
       }
       @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -43,7 +45,10 @@
           <span class="text-xl font-medium text-gray-900">Loverary</span>
         </a>
         <div class="flex items-center space-x-4">
-          <button id="logoutButton" class="flex items-center text-sm text-gray-700 hover:text-gray-900">
+          <button
+            id="logoutButton"
+            class="flex items-center text-sm text-gray-700 hover:text-gray-900"
+          >
             <span>Sign out</span>
           </button>
         </div>
@@ -62,11 +67,15 @@
             <dl class="sm:divide-y sm:divide-gray-200">
               <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">Email address</dt>
-                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="userEmail">Loading...</dd>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="userEmail">
+                  Loading...
+                </dd>
               </div>
               <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-sm font-medium text-gray-500">Member since</dt>
-                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="memberSince">Loading...</dd>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="memberSince">
+                  Loading...
+                </dd>
               </div>
             </dl>
           </div>
@@ -102,18 +111,18 @@
         // Handle logout
         const logoutButton = document.getElementById('logoutButton');
         if (logoutButton) {
-          logoutButton.addEventListener('click', async (e) => {
+          logoutButton.addEventListener('click', async e => {
             e.preventDefault();
             const button = e.target.closest('button');
             const originalText = button.innerHTML;
-            
+
             try {
               button.disabled = true;
               button.innerHTML = '<span class="spinner"></span>';
-              
+
               await logout();
               showToast('Successfully signed out', 'success');
-              
+
               // Redirect to login page after a short delay
               setTimeout(() => {
                 window.location.href = 'login.html';
