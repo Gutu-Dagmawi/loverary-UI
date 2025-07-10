@@ -95,176 +95,787 @@
     <div class="main-content">
       <div class="flex justify-between items-center mb-8">
         <h2 class="text-2xl font-bold text-gray-800">Manage Books</h2>
-        <button id="addBookBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center">
+        <a href="book-form.html" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center">
           <i class="fas fa-plus mr-2"></i>
           Add New Book
-        </button>
+        </a>
       </div>
 
       <!-- Books Table -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cover</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Copies</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody id="booksTableBody" class="bg-white divide-y divide-gray-200">
               <!-- Books will be loaded here dynamically -->
-              <tr>
-                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                  Loading books...
-                </td>
-              </tr>
             </tbody>
           </table>
         </div>
+        <!-- Pagination -->
+        <div id="paginationContainer" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <!-- Pagination will be inserted here by JavaScript -->
+        </div>
       </div>
     </div>
 
-    <!-- Book Modal (Hidden by default) -->
-    <div id="bookModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-start py-8 justify-center hidden overflow-y-auto">
-      <div class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <!-- Modal Header -->
-        <div class="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
-          <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Add New Book</h3>
-          <button id="closeModal" class="text-gray-400 hover:text-gray-500">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
+    <!-- SweetAlert2 for better alerts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script type="module">
+      import { isAdmin, isAuthenticated, getCsrfToken } from './src/api/auth.js';
+      import { initAdminSidebar } from './src/components/AdminSidebar.js';
+      
+      // Toast notification function
+      function showToast(message, type = 'info') {
+        const toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer);
+            toast.addEventListener('mouseleave', Swal.resumeTimer);
+          }
+        });
+
+        const iconMap = {
+          success: 'success',
+          error: 'error',
+          warning: 'warning',
+          info: 'info'
+        };
+
+        toast.fire({
+          icon: iconMap[type] || 'info',
+          title: message
+        });
+      }
+      
+      // API Base URL
+      const API_BASE_URL = 'http://localhost:8000/api/';
+      
+      // Check if user is authenticated and is admin
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (!isAuthenticated() || !isAdmin()) {
+          console.log('User is not authenticated or not an admin. Redirecting to login...');
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+          window.location.href = 'login.html';
+          return;
+        }
         
-        <!-- Scrollable Content -->
-        <div class="overflow-y-auto p-4 flex-1">
-        <form id="bookForm" class="space-y-3 text-sm" enctype="multipart/form-data">
-          <input type="hidden" id="bookId" name="id">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <!-- Required Fields -->
-            <div class="md:col-span-2">
-              <label for="title" class="block text-xs font-medium text-gray-700 mb-0.5">Title *</label>
-              <input type="text" id="title" name="title" required maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-            </div>
+        // Initialize the sidebar with 'books' as active
+        initAdminSidebar('books');
+        
+        // Load books
+        await loadBooks();
+        
+        // Set up event listeners
+        setupEventListeners();
+      });
+      
+      // Enhanced Author Cache with TTL (Time To Live)
+      const authorCache = (() => {
+        const cache = new Map();
+        const TTL = 5 * 60 * 1000; // 5 minutes TTL
+        
+        // Get author from cache if exists and not expired
+        function get(authorId) {
+          const id = Number(authorId);
+          if (!id || isNaN(id)) return null;
+          
+          const cached = cache.get(id);
+          if (!cached) return null;
+          
+          // Check if cache entry is expired
+          if (Date.now() - cached.timestamp > TTL) {
+            cache.delete(id);
+            return null;
+          }
+          
+          return cached.data;
+        }
+        
+        // Add author to cache
+        function set(author) {
+          if (!author) return;
+          
+          const id = author.id || author.author_id;
+          if (!id) return;
+          
+          cache.set(Number(id), {
+            data: author,
+            timestamp: Date.now()
+          });
+          
+          console.log(`Cached author ${id}:`, author.name || 'Unknown');
+        }
+        
+        // Batch fetch multiple authors
+        async function fetchAuthors(ids) {
+          if (!ids || !ids.length) return [];
+          
+          // Get unique, valid IDs
+          const allUniqueIds = [...new Set(ids)]
+            .map(id => Number(id))
+            .filter(id => id && !isNaN(id));
+          
+          if (allUniqueIds.length === 0) return [];
+          
+          // Get cached authors first
+          const cachedAuthors = allUniqueIds
+            .filter(id => has(id))
+            .map(id => get(id));
             
-            <div>
-              <label for="isbn" class="block text-xs font-medium text-gray-700 mb-0.5">ISBN *</label>
-              <input type="text" id="isbn" name="isbn" required maxlength="20" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-              <p class="mt-0.5 text-xs text-gray-500">Unique book identifier</p>
-            </div>
+          // Find uncached author IDs
+          const uncachedIds = allUniqueIds.filter(id => !has(id));
+          
+          if (uncachedIds.length === 0) {
+            // Return all from cache if nothing to fetch
+            return allUniqueIds.map(id => get(id));
+          }
+          
+          console.log('Fetching uncached authors:', uncachedIds);
+          
+          try {
+            // Fetch only uncached authors
+            const response = await fetch(`${API_BASE_URL}authors?ids=${uncachedIds.join(',')}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                'Accept': 'application/json',
+              },
+              credentials: 'include'
+            });
             
-            <div>
-              <label for="author_id" class="block text-xs font-medium text-gray-700 mb-0.5">Author ID</label>
-              <input type="number" id="author_id" name="author_id" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-              <p class="mt-0.5 text-xs text-gray-500">Optional</p>
-            </div>
-            
-            <div>
-              <label for="category" class="block text-xs font-medium text-gray-700 mb-0.5">Category *</label>
-              <input type="text" id="category" name="category" required maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-            </div>
-            
-            <div>
-              <label for="language" class="block text-xs font-medium text-gray-700 mb-0.5">Language *</label>
-              <input type="text" id="language" name="language" required maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-            </div>
-            
-            <div>
-              <label for="pages" class="block text-xs font-medium text-gray-700 mb-0.5">Pages *</label>
-              <input type="number" id="pages" name="pages" required min="1" max="10000" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-            </div>
-            
-            <div>
-              <label for="publication_year" class="block text-xs font-medium text-gray-700 mb-0.5">Publication Year</label>
-              <input type="number" id="publication_year" name="publication_year" min="1000" max="2026" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-              <p class="mt-0.5 text-xs text-gray-500">1000-2026</p>
-            </div>
-            
-            <div class="flex items-center">
-              <input type="checkbox" id="availability_status" name="availability_status" class="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" checked>
-              <label for="availability_status" class="ml-2 block text-xs text-gray-700">Available</label>
-            </div>
-            
-            <div>
-              <label for="publisher" class="block text-xs font-medium text-gray-700 mb-0.5">Publisher</label>
-              <input type="text" id="publisher" name="publisher" maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-            </div>
-            
-            <div>
-              <label for="edition" class="block text-xs font-medium text-gray-700 mb-0.5">Edition</label>
-              <input type="text" id="edition" name="edition" maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
-            </div>
-            
-            <!-- Summary -->
-            <div class="md:col-span-2">
-              <label for="summary" class="block text-xs font-medium text-gray-700 mb-0.5">Summary</label>
-              <textarea id="summary" name="summary" rows="2" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
-            </div>
-            
-            <!-- Book Copies Section -->
-            <div class="md:col-span-2 border-t pt-3 mt-1">
-              <div class="flex justify-between items-center mb-2">
-                <h4 class="text-xs font-medium text-gray-700">Book Copies *</h4>
-                <button type="button" id="addCopyBtn" class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <i class="fas fa-plus mr-1 text-xs"></i> Add Copy
-                </button>
-              </div>
+            if (response.ok) {
+              const result = await response.json();
+              const fetchedAuthors = Array.isArray(result) ? result : (result.data || []);
               
-              <div id="bookCopiesContainer" class="space-y-2">
-                <!-- Book copy template -->
-                <div class="book-copy border p-2 rounded text-xs">
-                  <div class="flex justify-between items-center mb-1">
-                    <span class="font-medium">Copy #1</span>
-                    <button type="button" class="remove-copy text-red-500 hover:text-red-700">
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </div>
-                  <div class="grid grid-cols-3 gap-2">
-                    <div>
-                      <label class="block text-xs text-gray-600 mb-0.5">Barcode *</label>
-                      <input type="text" name="book_copies[0][barcode]" required maxlength="100" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-7">
-                    </div>
-                    <div>
-                      <label class="block text-xs text-gray-600 mb-0.5">Condition</label>
-                      <input type="text" name="book_copies[0][condition]" maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-7">
-                    </div>
-                    <div>
-                      <label class="block text-xs text-gray-600 mb-0.5">Location</label>
-                      <input type="text" name="book_copies[0][location]" maxlength="255" class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-7">
-                    </div>
-                  </div>
+              // Cache all fetched authors
+              fetchedAuthors.forEach(author => set(author));
+              
+              // Combine cached and newly fetched authors
+              const allAuthors = allUniqueIds.map(id => get(id) || { id, name: 'Unknown Author' });
+              return allAuthors;
+            } else {
+              console.error('Batch fetch failed, falling back to individual requests');
+              throw new Error('Batch fetch failed');
+            }
+          } catch (error) {
+            console.error('Batch fetch error, falling back to individual requests:', error);
+            // Fall back to individual requests
+            return Promise.all(uniqueIds.map(fetchAuthor));
+          }
+        }
+        
+        // Fetch a single author
+        async function fetchAuthor(authorId) {
+          const id = Number(authorId);
+          if (!id || isNaN(id)) return { name: 'Unknown Author' };
+          
+          // Check cache first
+          const cached = get(id);
+          if (cached) return cached;
+          
+          try {
+            const response = await fetch(`${API_BASE_URL}authors/${id}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                'Accept': 'application/json',
+              },
+              credentials: 'include'
+            });
+            
+            if (response.ok) {
+              const author = await response.json();
+              set(author);
+              return author;
+            } else {
+              console.error(`Failed to fetch author ${id}:`, response.status);
+              return { id, name: 'Unknown Author' };
+            }
+          } catch (error) {
+            console.error(`Error fetching author ${id}:`, error);
+            return { id, name: 'Unknown Author' };
+          }
+        }
+        
+        // Check if author exists in cache
+        function has(authorId) {
+          const id = Number(authorId);
+          if (!id || isNaN(id)) return false;
+          return cache.has(id) && (Date.now() - cache.get(id).timestamp <= TTL);
+        }
+        
+        return {
+          get,
+          set,
+          has,
+          fetchAuthor,
+          fetchAuthors
+        };
+      })();
+      
+      // Alias for backward compatibility
+      const fetchAuthor = authorCache.fetchAuthor.bind(authorCache);
+      
+      // Preload multiple authors efficiently
+      async function preloadAuthors(authorIds) {
+        if (!authorIds || !authorIds.length) return [];
+        
+        // Get unique, valid author IDs that aren't already in cache
+        const uniqueIds = [...new Set(authorIds)]
+          .map(id => Number(id))
+          .filter(id => id && !isNaN(id) && !authorCache.has(id));
+        
+        if (uniqueIds.length === 0) return [];
+        
+        try {
+          const authors = await authorCache.fetchAuthors(uniqueIds);
+          console.log('Preloaded authors:', authors);
+          return authors;
+        } catch (error) {
+          console.error('Error preloading authors:', error);
+          return [];
+        }
+      }
+      
+      // Update just the author names in the UI
+      function updateAuthorNames(books) {
+        const booksTableBody = document.getElementById('booksTableBody');
+        if (!booksTableBody) return;
+        
+        // Create a mapping of book IDs to their rows
+        const rows = Array.from(booksTableBody.querySelectorAll('tr'));
+        const bookRows = new Map();
+        
+        rows.forEach(row => {
+          const bookId = row.getAttribute('data-book-id');
+          if (bookId) {
+            bookRows.set(bookId, row);
+          }
+        });
+        
+        // Update each book's author
+        books.forEach(book => {
+          const bookId = book.id || book.book_id;
+          const authorId = book.author_id || (book.author && book.author.id);
+          
+          if (!bookId || !authorId) return;
+          
+          const row = bookRows.get(String(bookId));
+          if (!row) return;
+          
+          // Find the author cell and update it
+          const authorCell = row.querySelector('[data-author-cell]');
+          if (authorCell) {
+            const author = authorCache.get(Number(authorId));
+            if (author) {
+              authorCell.textContent = author.full_name || author.name || 'Unknown Author';
+            }
+          }
+        });
+      }
+      
+      // Load books from API
+      async function loadBooks(page = 1) {
+        try {
+          // Show loading state
+          const booksTableBody = document.getElementById('booksTableBody');
+          booksTableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center">Loading books...</td></tr>';
+          
+          // Show loading state in pagination
+          const paginationContainer = document.getElementById('paginationContainer');
+          if (paginationContainer) {
+            paginationContainer.innerHTML = '<div class="flex justify-center py-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+          }
+          
+          // Initial render with skeleton loading
+          renderBooks(Array(10).fill({ loading: true }));
+          
+          const response = await fetch(`${API_BASE_URL}books?page=${page}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Failed to load books: ${response.statusText}`);
+          }
+          
+          const responseData = await response.json();
+          const books = responseData.data || [];
+          const pagination = responseData.pagination || { current_page: 1, per_page: 10, total: 0 };
+          
+          if (!Array.isArray(books)) {
+            throw new Error('Invalid response format: books data is not an array');
+          }
+          
+          // Extract author IDs from books (checking both author_id and author.id)
+          const authorIds = books
+            .map(book => book.author_id || (book.author && book.author.id))
+            .filter(Boolean);
+            
+          console.log('Author IDs to fetch:', authorIds);
+          
+          // Start preloading authors in the background
+          if (authorIds.length > 0) {
+            const currentPage = window.currentPage || 1;
+            
+            // Don't await here, let it happen in the background
+            preloadAuthors(authorIds)
+              .then(() => {
+                // Only update if we're still on the same page
+                if (document.readyState === 'complete' && (window.currentPage || 1) === currentPage) {
+                  // Just update the author names without refetching books
+                  updateAuthorNames(books);
+                }
+              })
+              .catch(console.error);
+          }
+          
+          // Process books with authors
+          const booksWithAuthors = books.map(book => {
+            const bookId = book.id || book.book_id;
+            const authorId = book.author_id || (book.author && book.author.id);
+            
+            if (!authorId) {
+              console.warn('Book has no author ID:', bookId, book.title);
+              return { 
+                ...book, 
+                author: { name: 'Unknown Author' },
+                author_name: 'Unknown Author'
+              };
+            }
+            
+            // If we have author data in the book object, cache it
+            if (book.author) {
+              authorCache.set(Number(authorId), book.author);
+              return {
+                ...book,
+                author_name: book.author.full_name || book.author.name || 'Unknown Author'
+              };
+            }
+            
+            // Check cache
+            if (authorCache.has(Number(authorId))) {
+              const author = authorCache.get(Number(authorId));
+              return { 
+                ...book, 
+                author: author,
+                author_name: author.full_name || author.name || 'Unknown Author'
+              };
+            }
+            
+            // If we get here, the author isn't cached yet but will be loaded by preloadAuthors
+            return { 
+              ...book, 
+              author: { id: authorId, name: 'Loading...' },
+              author_name: 'Loading...' 
+            };
+          });
+          
+          // Store pagination state
+          window.currentPage = pagination.current_page || 1;
+          window.perPage = pagination.per_page || 10;
+          window.totalItems = pagination.total || 0;
+          window.totalPages = Math.ceil(window.totalItems / window.perPage) || 1;
+          window.pagination = pagination;
+          
+          // Render books and pagination
+          renderBooks(booksWithAuthors);
+          renderPagination();
+          
+        } catch (error) {
+          console.error('Error loading books:', error);
+          const booksTableBody = document.getElementById('booksTableBody');
+          booksTableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="px-6 py-4 text-center text-red-600">
+                Error loading books: ${error.message}
+              </td>
+            </tr>
+          `;
+        }
+      }
+      
+      // Render pagination controls
+      function renderPagination() {
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (!paginationContainer) return;
+        
+        const { currentPage, totalPages, totalItems, perPage } = window;
+        
+        if (totalPages <= 1) {
+          paginationContainer.innerHTML = `
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+              <div class="flex-1 flex justify-between sm:hidden"></div>
+              <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm text-gray-700">
+                    Showing <span class="font-medium">1</span> to <span class="font-medium">${totalItems}</span> of{' '}
+                    <span class="font-medium">${totalItems}</span> results
+                  </p>
                 </div>
               </div>
-            </div>
-            
-            <!-- Cover Image -->
-            <div class="md:col-span-2 border-t pt-3">
-              <label for="cover_image" class="block text-xs font-medium text-gray-700 mb-0.5">Cover Image</label>
-              <div class="flex items-center">
-                <input type="file" id="cover_image" name="cover_image" accept="image/jpg,image/jpeg,image/png" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-              </div>
-              <p class="mt-0.5 text-xs text-gray-500">JPG/JPEG/PNG (max 2MB)</p>
-            </div>
-          </div>
-        </div>
+            </div>`;
+          return;
+        }
         
-        <!-- Modal Footer -->
-        <div class="p-4 border-t bg-gray-50 sticky bottom-0">
-          <div class="flex justify-end space-x-3">
-            <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
-              Cancel
-            </button>
-            <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              Save Book
-            </button>
+        // Calculate the range of items being shown
+        const startItem = (currentPage - 1) * perPage + 1;
+        const endItem = Math.min(currentPage * perPage, totalItems);
+        
+        let paginationHtml = `
+          <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+              ${currentPage > 1 ? `
+                <button onclick="loadBooks(${currentPage - 1})" 
+                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                  Previous
+                </button>
+              ` : '<span></span>'}
+              ${currentPage < totalPages ? `
+                <button onclick="loadBooks(${currentPage + 1})" 
+                  class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                  Next
+                </button>
+              ` : '<span></span>'}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm text-gray-700">
+                  Showing <span class="font-medium">${startItem}</span> to 
+                  <span class="font-medium">${endItem}</span> of 
+                  <span class="font-medium">${totalItems}</span> results
+                </p>
+              </div>
+              <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  ${currentPage > 1 ? `
+                    <button onclick="loadBooks(${currentPage - 1})" 
+                      class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                      ${currentPage === 1 ? 'disabled cursor-not-allowed opacity-50' : ''}
+                    >
+                      <span class="sr-only">Previous</span>
+                      <i class="fas fa-chevron-left h-4 w-4"></i>
+                    </button>
+                  ` : ''}
+                  
+                  ${Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    // Skip if we've already shown this page number
+                    if (i > 0 && pageNum <= currentPage - 3) {
+                      return '';
+                    }
+                    // Show ellipsis before first page if needed
+                    if (i === 0 && currentPage > 3) {
+                      return `
+                        <button onclick="loadBooks(1)" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          1
+                        </button>
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                          ...
+                        </span>
+                      `;
+                    }
+                    
+                    // Show ellipsis after last page if needed
+                    if (i === 4 && currentPage < totalPages - 2) {
+                      return `
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                          ...
+                        </span>
+                        <button onclick="loadBooks(${totalPages})" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          ${totalPages}
+                        </button>
+                      `;
+                    }
+                    
+                    return `
+                      <button onclick="loadBooks(${pageNum})"
+                        class="relative inline-flex items-center px-4 py-2 border ${
+                          pageNum === currentPage 
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600 font-semibold' 
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        } text-sm font-medium">
+                        ${pageNum}
+                      </button>
+                    `;
+                  }).join('')}
+                
+                ${currentPage < totalPages ? `
+                  <button onclick="loadBooks(${currentPage + 1})" 
+                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    ${currentPage === totalPages ? 'disabled cursor-not-allowed opacity-50' : ''}>
+                    <span class="sr-only">Next</span>
+                    <i class="fas fa-chevron-right h-4 w-4"></i>
+                  </button>
+                ` : ''}
+              </nav>
+            </div>
           </div>
-        </div>
-        </form>
-      </div>
-    </div>
+        `;
+        
+        paginationContainer.innerHTML = paginationHtml;
+        
+        // Update URL without page reload
+        const url = new URL(window.location);
+        if (currentPage > 1) {
+          url.searchParams.set('page', currentPage);
+        } else {
+          url.searchParams.delete('page');
+        }
+        window.history.pushState({}, '', url);
+      }
+      
+      // Render books in the table
+      function renderBooks(books) {
+        const booksTableBody = document.getElementById('booksTableBody');
+        
+        if (!books || !Array.isArray(books) || books.length === 0) {
+          booksTableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                No books found. Click "Add New Book" to get started.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        // Check if we're showing loading state
+        if (books[0] && books[0].loading) {
+          booksTableBody.innerHTML = Array(10).fill().map(() => `
+            <tr class="animate-pulse">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-16 w-12 mr-3 bg-gray-200 rounded"></div>
+                  <div>
+                    <div class="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                    <div class="h-3 bg-gray-100 rounded w-24"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="h-4 bg-gray-200 rounded w-24"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="h-6 w-6 bg-gray-200 rounded-full"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="h-8 w-16 bg-gray-200 rounded"></div>
+              </td>
+            </tr>
+          `).join('');
+          return;
+        }
+        
+        booksTableBody.innerHTML = books.map(book => {
+          const bookId = book.id || book.book_id;
+          if (!bookId) {
+            console.error('Book is missing ID:', book);
+            return '';
+          }
+          
+          const authorId = book.author_id || (book.author && book.author.id);
+          const author = authorId ? authorCache.get(Number(authorId)) : null;
+          
+          return `
+            <tr data-book-id="${bookId}">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-14 w-10">
+                    ${book.cover_image_url ? 
+                      `<img 
+                        class="h-full w-full rounded-md object-cover" 
+                        src="${book.cover_image_url.startsWith('http') ? '' : 'http://localhost:8000'}${book.cover_image_url}" 
+                        alt="${book.title || 'Book cover'}"
+                        onerror="this.onerror=null; this.src='https://via.placeholder.com/40x56?text=No+Cover';"
+                      >` : 
+                      `<div class="h-full w-full rounded-md bg-gray-200 flex items-center justify-center">
+                        <i class="fas fa-book text-gray-400"></i>
+                      </div>`
+                    }
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900">${book.title || 'No title'}</div>
+                    <div class="text-sm text-gray-500">${book.isbn || 'No ISBN'}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap" data-author-cell>
+                <div class="text-sm text-gray-900">
+                  ${author ? (author.full_name || author.name || 'Unknown Author') : 'Loading...'}
+                </div>
+                <div class="text-sm text-gray-500">${book.publication_year || ''}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                ${book.book_copies ? `
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    ${book.book_copies.some(copy => copy.is_available) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    ${book.book_copies.filter(copy => copy.is_available).length} of ${book.book_copies.length} available
+                  </span>
+                ` : '<span class="text-gray-500 text-sm">No copies</span>'}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <a href="book-form.html?id=${bookId}" class="text-blue-600 hover:text-blue-900 mr-3">
+                  <i class="fas fa-edit"></i> Edit
+                </a>
+                <button onclick="window.handleDeleteBook(event, ${bookId})" class="text-red-600 hover:text-red-900">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+      
 
-    <script src="src/js/admin-books.js" type="module"></script>
+      
+      // Set up event listeners
+      function setupEventListeners() {
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+          let searchTimeout;
+          searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const searchTerm = e.target.value.trim();
+            searchTimeout = setTimeout(() => {
+              loadBooks(1); // Reset to first page when searching
+            }, 500);
+          });
+        }
+      }
+      
+      // Make functions available globally
+      window.loadBooks = loadBooks;
+      
+      // Make deleteBook function available globally for inline event handlers
+      // Handle book deletion with confirmation
+      window.handleDeleteBook = async function(event, bookId) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        if (!bookId) {
+          console.error('No book ID provided for deletion');
+          showToast('Error: No book ID provided', 'error');
+          return;
+        }
+
+        try {
+          // Show confirmation dialog
+          const result = await Swal.fire({
+            title: 'Delete Book',
+            text: 'Are you sure you want to delete this book? This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+            customClass: {
+              confirmButton: 'px-4 py-2 rounded-md',
+              cancelButton: 'px-4 py-2 rounded-md mr-2'
+            }
+          });
+
+          if (!result.isConfirmed) {
+            return;
+          }
+
+          // Get CSRF token
+          const csrfToken = await getCsrfToken();
+          const authToken = localStorage.getItem('auth_token');
+          
+          if (!authToken) {
+            throw new Error('Not authenticated. Please log in again.');
+          }
+
+          // Get the button that was clicked
+          const deleteButton = event.target.closest('button');
+          const originalButtonHTML = deleteButton?.innerHTML || '';
+          
+          // Update button to show loading state
+          if (deleteButton) {
+            deleteButton.disabled = true;
+            deleteButton.innerHTML = `
+              <i class="fas fa-spinner fa-spin mr-2"></i>
+              Deleting...
+            `;
+          }
+
+          // Make the delete request
+          const response = await fetch(`${API_BASE_URL}books/${bookId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Accept': 'application/json',
+              'X-XSRF-TOKEN': csrfToken,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Failed to delete book: ${response.statusText}`);
+          }
+          
+          // Show success message
+          await Swal.fire({
+            title: 'Deleted!',
+            text: 'The book has been deleted.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          });
+          
+          // Reload the books list but stay on the same page
+          await loadBooks(window.currentPage || 1);
+          
+        } catch (error) {
+          console.error('Error deleting book:', error);
+          
+          // Show error message
+          await Swal.fire({
+            title: 'Error',
+            text: error.message || 'Failed to delete book',
+            icon: 'error',
+            confirmButtonText: 'OK'
+          });
+          
+          // Re-enable the delete button if it exists
+          const deleteButton = event.target.closest('button');
+          if (deleteButton) {
+            deleteButton.disabled = false;
+            deleteButton.innerHTML = originalButtonHTML;
+          }
+        }
+      };
+    </script>
   </body>
 </html>
