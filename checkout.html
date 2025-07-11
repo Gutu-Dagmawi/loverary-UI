@@ -29,8 +29,16 @@
     <!-- Navigation -->
     <div id="nav"></div>
 
-    <!-- Main Content -->
-    <div class="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 transition-opacity duration-300">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mx-auto mb-4"></div>
+        <p class="text-gray-700">Loading checkout...</p>
+      </div>
+    </div>
+
+    <!-- Main Content (initially hidden) -->
+    <div id="main-content" class="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8 hidden">
       <div class="bg-white shadow-lg rounded-xl p-8">
         <h1 class="text-2xl font-bold text-gray-900 mb-6">Book Checkout</h1>
         <!-- Book info will be inserted here by JavaScript -->

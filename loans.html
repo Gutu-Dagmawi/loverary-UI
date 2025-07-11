@@ -41,7 +41,16 @@
   <body class="min-h-screen bg-gray-50">
     <!-- Navigation -->
     <div id="nav"></div>
-    <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 transition-opacity duration-300">
+      <div class="text-center">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-gray-700">Loading your loans...</p>
+      </div>
+    </div>
+
+    <!-- Main Content (initially hidden) -->
+    <main id="main-content" class="mx-auto max-w-3xl px-4 py-8 sm:px-6 hidden">
       <h1 class="mb-6 text-2xl font-bold text-gray-900">My Loans</h1>
       <div id="loansContainer" class="space-y-4"></div>
       <div id="noLoansMessage" class="mt-12 hidden text-center text-gray-500">
@@ -91,201 +100,254 @@
         }
       };
 
-      document.addEventListener('DOMContentLoaded', async () => {
-        console.log('Loans page loaded');
-        // Inject nav
-        const navContainer = document.getElementById('nav');
-        if (navContainer) {
-          navContainer.innerHTML = renderNav({
-            active: 'loans',
-            isAuthenticated: isAuthenticated(),
-          });
-          setupNavigation();
-          setupLogoutButton();
-        }
+      // Show loading state
+      function showLoading() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const mainContent = document.getElementById('main-content');
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+        if (mainContent) mainContent.classList.add('hidden');
+      }
 
-        // Get current user
-        const user = getCurrentUser();
-        if (!user) {
-          console.log('No user found, redirecting to login');
-          window.location.href = 'login.html';
-          return;
-        }
+      // Hide loading and show content
+      function hideLoading() {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const mainContent = document.getElementById('main-content');
+        if (loadingOverlay) loadingOverlay.classList.add('opacity-0');
+        if (mainContent) mainContent.classList.remove('hidden');
+        
+        // Remove loading overlay from DOM after fade out
+        setTimeout(() => {
+          if (loadingOverlay) loadingOverlay.remove();
+        }, 300);
+      }
 
-        console.log('Fetching loans for user', user);
-        // Fetch loans
-        let loans = [];
-        try {
-          loans = await getUserLoans();
-          console.log('Fetched loans:', loans);
-        } catch (err) {
-          console.error('Error fetching loans:', err);
-          document.getElementById('loansContainer').innerHTML =
-            `<div class="text-red-500">${err.message}</div>`;
-          return;
-        }
-
+      // Show error message
+      function showError(message) {
         const container = document.getElementById('loansContainer');
-        const noLoansMessage = document.getElementById('noLoansMessage');
-        if (!loans.length) {
-          noLoansMessage.classList.remove('hidden');
-          return;
+        if (container) {
+          container.innerHTML = `
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm text-red-700">${message}</p>
+                </div>
+              </div>
+            </div>
+          `;
         }
-        console.log('Rendering loans:', loans);
-        // Process loans and fetch book details
-        const loansWithBookDetails = await Promise.all(loans.map(async loan => {
-          try {
-            const bookDetails = await getBookByBarcode(loan.book_copy_barcode);
-            return {
-              ...loan,
-              book_title: bookDetails.book?.title || 'Unknown Book',
-              book_author: bookDetails.book?.author?.name || 'Unknown Author'
-            };
-          } catch (error) {
-            console.error('Error fetching book details:', error);
-            return {
-              ...loan,
-              book_title: 'Unknown Book',
-              book_author: 'Unknown Author'
-            };
+        hideLoading();
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        showLoading();
+        console.log('Loans page loaded');
+        
+        try {
+          // Inject nav
+          const navContainer = document.getElementById('nav');
+          if (navContainer) {
+            navContainer.innerHTML = renderNav({
+              active: 'loans',
+              isAuthenticated: isAuthenticated(),
+            });
+            setupNavigation();
+            setupLogoutButton();
           }
-        }));
 
-        // Render loan cards
-        container.innerHTML = loansWithBookDetails
-          .map(loan => {
-            const dueDate = new Date(loan.due_date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-            const isOverdue = daysLeft < 0;
-            const isDueSoon = daysLeft >= 0 && daysLeft <= 3;
-            const checkOutDate = new Date(loan.check_out_date);
-            
-            // Calculate progress (0-100% of loan period)
-            const totalDays = Math.ceil((dueDate - checkOutDate) / (1000 * 60 * 60 * 24));
-            const daysPassed = Math.ceil((today - checkOutDate) / (1000 * 60 * 60 * 24));
-            const progressPercentage = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+          // Get current user
+          const user = getCurrentUser();
+          if (!user) {
+            console.log('No user found, redirecting to login');
+            window.location.href = 'login.html';
+            return;
+          }
 
-            // Status styling with icons
-            const statusClass = isOverdue
-              ? {
-                  status: 'Overdue',
-                  bg: 'bg-red-50',
-                  text: 'text-red-700',
-                  border: 'border-red-200',
-                  progress: 'bg-red-500'
-                }
-              : isDueSoon
-              ? {
-                  status: `Due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
-                  bg: 'bg-yellow-50',
-                  text: 'text-yellow-700',
-                  border: 'border-yellow-200',
-                  progress: 'bg-yellow-400'
-                }
-              : {
-                  status: `Due in ${daysLeft} days`,
-                  bg: 'bg-green-50',
-                  text: 'text-green-700',
-                  border: 'border-green-200',
-                  progress: 'bg-green-500'
-                };
+          console.log('Fetching loans for user', user);
+          
+          // Fetch loans
+          let loans = [];
+          try {
+            loans = await getUserLoans();
+            console.log('Fetched loans:', loans);
+          } catch (err) {
+            console.error('Error fetching loans:', err);
+            document.getElementById('loansContainer').innerHTML =
+              `<div class="text-red-500">${err.message}</div>`;
+            hideLoading();
+            return;
+          }
 
-            // Format dates
-            const formattedDueDate = dueDate.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            });
+          const container = document.getElementById('loansContainer');
+          const noLoansMessage = document.getElementById('noLoansMessage');
+          
+          if (!loans.length) {
+            noLoansMessage.classList.remove('hidden');
+            hideLoading();
+            return;
+          }
+          
+          console.log('Rendering loans:', loans);
+          
+          // Process loans and fetch book details
+          const loansWithBookDetails = await Promise.all(loans.map(async loan => {
+            try {
+              const bookDetails = await getBookByBarcode(loan.book_copy_barcode);
+              return {
+                ...loan,
+                book_title: bookDetails.book?.title || 'Unknown Book',
+                book_author: bookDetails.book?.author?.name || 'Unknown Author'
+              };
+            } catch (error) {
+              console.error('Error fetching book details:', error);
+              return {
+                ...loan,
+                book_title: 'Unknown Book',
+                book_author: 'Unknown Author'
+              };
+            }
+          }));
 
-            const formattedCheckoutDate = checkOutDate.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            });
+          // Render loan cards
+          container.innerHTML = loansWithBookDetails
+            .map(loan => {
+              const dueDate = new Date(loan.due_date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const daysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+              const isOverdue = daysLeft < 0;
+              const isDueSoon = daysLeft >= 0 && daysLeft <= 3;
+              const checkOutDate = new Date(loan.check_out_date);
+              
+              // Calculate progress (0-100% of loan period)
+              const totalDays = Math.ceil((dueDate - checkOutDate) / (1000 * 60 * 60 * 24));
+              const daysPassed = Math.ceil((today - checkOutDate) / (1000 * 60 * 60 * 24));
+              const progressPercentage = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
 
+              // Status styling with icons
+              const statusClass = isOverdue
+                ? {
+                    status: 'Overdue',
+                    bg: 'bg-red-50',
+                    text: 'text-red-700',
+                    border: 'border-red-200',
+                    progress: 'bg-red-500'
+                  }
+                : isDueSoon
+                ? {
+                    status: `Due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
+                    bg: 'bg-yellow-50',
+                    text: 'text-yellow-700',
+                    border: 'border-yellow-200',
+                    progress: 'bg-yellow-400'
+                  }
+                : {
+                    status: `Due in ${daysLeft} days`,
+                    bg: 'bg-green-50',
+                    text: 'text-green-700',
+                    border: 'border-green-200',
+                    progress: 'bg-green-500'
+                  };
 
+              // Format dates
+              const formattedDueDate = dueDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
 
-            return `
-              <div class="relative group">
-                <div class="
-                  bg-white rounded-xl shadow-sm overflow-hidden
-                  border border-gray-100 transition-all duration-200
-                  hover:shadow-md hover:border-gray-200
-                  flex flex-col md:flex-row
-                ">
+              const formattedCheckoutDate = checkOutDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
 
-                  <div class="p-4 pl-10 w-full">
-                    <!-- Book & Loan Info -->
-                    <div class="flex-1 flex flex-col">
-                      <div class="flex justify-between items-start mb-4">
-                        <!-- Title -->
-                        <h3 class="text-base font-semibold text-gray-900 leading-tight line-clamp-2">
-                          ${loan.book_title || 'Untitled Book'}
-                        </h3>
-                        <!-- Due Date Badge -->
-                        <div class="flex-shrink-0 ml-3 ${isOverdue ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'} px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+              return `
+                <div class="relative group">
+                  <div class="
+                    bg-white rounded-xl shadow-sm overflow-hidden
+                    border border-gray-100 transition-all duration-200
+                    hover:shadow-md hover:border-gray-200
+                    flex flex-col md:flex-row
+                  ">
+                    <div class="p-4 pl-10 w-full">
+                      <!-- Book & Loan Info -->
+                      <div class="flex-1 flex flex-col">
+                        <div class="flex justify-between items-start mb-4">
+                          <!-- Title -->
+                          <h3 class="text-base font-semibold text-gray-900 leading-tight line-clamp-2">
+                            ${loan.book_title || 'Untitled Book'}
+                          </h3>
+                          <!-- Due Date Badge -->
+                          <div class="flex-shrink-0 ml-3 ${isOverdue ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'} px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                            <div class="flex items-center">
+                              <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Due: ${formattedDueDate}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Author -->
+                        <p class="text-sm text-gray-600 mb-4">
+                          by ${loan.book_author || 'Unknown Author'}
+                        </p>
+                        
+                        <!-- Barcode -->
+                        <div class="flex items-center text-sm text-gray-600 mb-4">
+                          <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          </svg>
+                          ${loan.book_copy_barcode}
+                        </div>
+                        
+                        <!-- Checkout Date -->
+                        <div class="text-sm text-gray-600 mb-4">
                           <div class="flex items-center">
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Due: ${formattedDueDate}
+                            <span>Checked out: <span class="font-medium">${formattedCheckoutDate}</span></span>
                           </div>
                         </div>
                       </div>
-                      
-                      <!-- Author -->
-                      <p class="text-sm text-gray-600 mb-4">
-                        by ${loan.book_author || 'Unknown Author'}
-                      </p>
-                      
-                      <!-- Barcode -->
-                      <div class="flex items-center text-sm text-gray-600 mb-4">
-                        <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
-                        ${loan.book_copy_barcode}
-                      </div>
-                      
-                      <!-- Checkout Date -->
-                      <div class="text-sm text-gray-600 mb-4">
-                        <div class="flex items-center">
-                          <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span>Checked out: <span class="font-medium">${formattedCheckoutDate}</span></span>
+                      <div class="mt-4 flex justify-between items-center pt-3 border-t border-gray-100">
+                        <div class="text-sm text-gray-500">
+                          <span class="font-medium">Barcode:</span> ${loan.book_copy_barcode}
                         </div>
+                        <button 
+                          onclick="handleReturn('${loan.check_out_id}')" 
+                          class="
+                            inline-flex items-center px-4 py-2 border border-transparent
+                            text-sm font-medium rounded-md shadow-sm text-white
+                            bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2
+                            focus:ring-offset-1 focus:ring-orange-500 transition-colors
+                            duration-150
+                          "
+                        >
+                          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Return
+                        </button>
                       </div>
-                    </div>
-                    <div class="mt-4 flex justify-between items-center pt-3 border-t border-gray-100">
-                      <div class="text-sm text-gray-500">
-                        <span class="font-medium">Barcode:</span> ${loan.book_copy_barcode}
-                      </div>
-                      <button 
-                        onclick="handleReturn('${loan.check_out_id}')" 
-                        class="
-                          inline-flex items-center px-4 py-2 border border-transparent
-                          text-sm font-medium rounded-md shadow-sm text-white
-                          bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2
-                          focus:ring-offset-1 focus:ring-orange-500 transition-colors
-                          duration-150
-                        "
-                      >
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Return
-                      </button>
                     </div>
                   </div>
-                </div>
-              </div>`;
-          })
-          .join('');
-      });
-
-
+                </div>`;
+            })
+            .join('');
+            
+            hideLoading();
+          } catch (error) {
+            console.error('Error initializing loans page:', error);
+            showError('Failed to load loans. Please try again later.');
+          }
+        });
     </script>
   </body>
 </html>

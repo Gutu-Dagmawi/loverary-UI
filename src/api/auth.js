@@ -1,5 +1,24 @@
-// API base URL - direct to backend
-const API_BASE_URL = 'http://localhost:8000/';
+// API base URL - direct to backend (no trailing slash)
+export const API_BASE_URL = 'http://localhost:8000/';
+
+/**
+ * Gets the authentication headers with the bearer token
+ * @returns {Object} - Headers object with authorization and content type
+ */
+export const getAuthHeaders = () => {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
 
 /**
  * Gets the CSRF token by first fetching the CSRF cookie if needed
@@ -11,8 +30,8 @@ export const getCsrfToken = async () => {
     method: 'GET',
     credentials: 'include',
     headers: {
-      'Accept': 'application/json',
-    }
+      Accept: 'application/json',
+    },
   });
 
   if (!csrfResponse.ok) {
@@ -26,12 +45,12 @@ export const getCsrfToken = async () => {
     if (parts.length === 2) return parts.pop().split(';').shift();
     return null;
   };
-  
+
   const csrfToken = getCookie('XSRF-TOKEN');
   if (!csrfToken) {
     throw new Error('CSRF token not found in cookies');
   }
-  
+
   return decodeURIComponent(csrfToken);
 };
 
@@ -53,7 +72,7 @@ export const adminLogin = async (formData) => {
       email: email,
       password: password,
     };
-    
+
     // Debug log the data being sent
     console.log('Prepared admin login data:', {
       email: email ? `${email.substring(0, 2)}...` : 'empty',
@@ -64,13 +83,13 @@ export const adminLogin = async (formData) => {
     const response = await fetch(`${API_BASE_URL}api/login`, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
         'X-XSRF-TOKEN': csrfToken ? decodeURIComponent(csrfToken) : '',
       },
       credentials: 'include',
-      body: JSON.stringify(loginData)
+      body: JSON.stringify(loginData),
     });
 
     const data = await response.json();
@@ -87,7 +106,7 @@ export const adminLogin = async (formData) => {
         localStorage.removeItem('currentAdmin');
         throw new Error('Access denied. Admin privileges required.');
       }
-      
+
       // Store the admin data - using the same token key as regular users
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('currentUser', JSON.stringify(data.user));
@@ -121,7 +140,7 @@ export const login = async (formData) => {
       email: email,
       password: password,
     };
-    
+
     // Debug log the data being sent
     console.log('Prepared login data:', {
       email: email ? `${email.substring(0, 2)}...` : 'empty',
@@ -132,13 +151,13 @@ export const login = async (formData) => {
     const response = await fetch(`${API_BASE_URL}api/login`, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
         'X-XSRF-TOKEN': csrfToken ? decodeURIComponent(csrfToken) : '',
       },
       credentials: 'include',
-      body: JSON.stringify(loginData)
+      body: JSON.stringify(loginData),
     });
 
     const data = await response.json();
@@ -176,23 +195,23 @@ export const logout = async () => {
   try {
     const csrfToken = await getCsrfToken();
     const authToken = getAuthToken();
-    
+
     const response = await fetch(`${API_BASE_URL}api/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
         'X-XSRF-TOKEN': csrfToken,
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
       },
       credentials: 'include',
     });
 
     // Clear all possible authentication data from localStorage
     const authKeys = ['auth_token', 'authToken', 'adminToken', 'currentUser', 'currentAdmin'];
-    authKeys.forEach(key => localStorage.removeItem(key));
-    
+    authKeys.forEach((key) => localStorage.removeItem(key));
+
     // Clear session storage as well
     sessionStorage.clear();
 
@@ -203,7 +222,7 @@ export const logout = async () => {
 
     // Redirect to login page after successful logout
     window.location.href = '/login.html';
-    
+
     return { success: true };
   } catch (error) {
     console.error('Logout error:', error);
@@ -211,10 +230,10 @@ export const logout = async () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('currentUser');
     sessionStorage.clear();
-    
+
     // Redirect to login page on error as well
     window.location.href = '/login.html';
-    
+
     throw error;
   }
 };

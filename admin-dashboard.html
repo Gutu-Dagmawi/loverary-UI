@@ -15,12 +15,31 @@
         width: 250px;
         height: 100vh;
         position: fixed;
-        left: 0;
+        left: -250px;
         top: 0;
+        transition: left 0.3s ease;
+        z-index: 50;
+        background-color: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .sidebar.active {
+        left: 0;
       }
       .main-content {
-        margin-left: 250px;
-        padding: 2rem;
+        margin-left: 0;
+        padding: 1rem;
+        transition: margin-left 0.3s ease;
+        width: 100%;
+        min-height: 100vh;
+      }
+      @media (min-width: 768px) {
+        .sidebar {
+          left: 0;
+        }
+        .main-content {
+          margin-left: 250px;
+          padding: 2rem;
+        }
       }
       .nav-link {
         display: flex;
@@ -28,10 +47,9 @@
         padding: 0.75rem 1rem;
         color: #4b5563;
         border-radius: 0.375rem;
-        transition-property:
-          color, background-color, border-color, text-decoration-color, fill, stroke;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 150ms;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        white-space: nowrap;
       }
       .nav-link:hover {
         background-color: #f3f4f6;
@@ -54,6 +72,33 @@
       import { getCurrentUser, logout } from './src/api/auth.js';
       import { initAdminSidebar } from './src/components/AdminSidebar.js';
       import { redirectToLoginIfNotAuthenticated, ensureAdminAccess } from './src/utils/redirect.js';
+      
+      // Mobile menu toggle
+      function setupMobileMenu() {
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        
+        if (mobileMenuButton && sidebar && overlay) {
+          const toggleSidebar = () => {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('hidden');
+            document.body.classList.toggle('overflow-hidden');
+          };
+          
+          mobileMenuButton.addEventListener('click', toggleSidebar);
+          overlay.addEventListener('click', toggleSidebar);
+          
+          // Close sidebar when clicking on a nav link on mobile
+          document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+              if (window.innerWidth < 768) {
+                toggleSidebar();
+              }
+            });
+          });
+        }
+      }
 
       // Set current date
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -76,6 +121,11 @@
 
           // Initialize the sidebar with 'dashboard' as active
           initAdminSidebar('dashboard');
+          
+          // Setup mobile menu after sidebar is initialized
+          setTimeout(() => {
+            setupMobileMenu();
+          }, 100);
 
           // Initialize any other admin-specific UI here
           initializeAdminUI();
@@ -103,11 +153,22 @@
       }
     </script>
 
+    <!-- Import the admin dashboard script -->
+    <script type="module" src="./src/js/adminDashboard.js"></script>
+
+    <!-- Mobile menu button -->
+    <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white shadow-md">
+      <i class="fas fa-bars text-gray-700"></i>
+    </button>
+
     <!-- Sidebar will be injected here by AdminSidebar.js -->
     <div id="admin-sidebar-container"></div>
+    
+    <!-- Overlay for mobile -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
 
     <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content pt-16 md:pt-0">
       <div class="flex justify-between items-center mb-8">
         <h2 class="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
         <div class="text-sm text-gray-500">
@@ -116,7 +177,7 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-blue-50 text-blue-600">
@@ -124,7 +185,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Total Books</p>
-              <p class="text-2xl font-semibold text-gray-800">1,234</p>
+              <p id="totalBooks" class="text-2xl font-semibold text-gray-800">Loading...</p>
             </div>
           </div>
         </div>
@@ -136,7 +197,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Active Users</p>
-              <p class="text-2xl font-semibold text-gray-800">568</p>
+              <p id="activeUsers" class="text-2xl font-semibold text-gray-800">Loading...</p>
             </div>
           </div>
         </div>
@@ -148,7 +209,7 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Active Loans</p>
-              <p class="text-2xl font-semibold text-gray-800">324</p>
+              <p id="activeLoans" class="text-2xl font-semibold text-gray-800">Loading...</p>
             </div>
           </div>
         </div>
@@ -160,19 +221,19 @@
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Overdue</p>
-              <p class="text-2xl font-semibold text-gray-800">24</p>
+              <p id="overdueLoans" class="text-2xl font-semibold text-gray-800">Loading...</p>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Recent Activity -->
-      <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
+      <div class="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-100 mb-6 md:mb-8 overflow-x-auto">
         <div class="flex justify-between items-center mb-6">
           <h3 class="text-lg font-medium text-gray-900">Recent Activity</h3>
           <a href="#" class="text-sm text-blue-600 hover:text-blue-800">View All</a>
         </div>
-        <div class="space-y-4">
+        <div class="space-y-4 min-w-[300px] md:min-w-0">
           <div class="flex items-start pb-4 border-b border-gray-100">
             <div class="p-2 bg-blue-50 rounded-full text-blue-600 mr-4">
               <i class="fas fa-book"></i>

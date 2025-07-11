@@ -12,12 +12,44 @@
         width: 250px;
         height: 100vh;
         position: fixed;
-        left: 0;
         top: 0;
+        left: 0;
+        z-index: 50;
+        background-color: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease-in-out;
+      }
+      @media (max-width: 767px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+        .sidebar.translate-x-0 {
+          transform: translateX(0);
+        }
       }
       .main-content {
-        margin-left: 250px;
-        padding: 2rem;
+        transition: margin-left 0.3s ease;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+      
+      /* Make tables responsive */
+      .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+      }
+      
+      table {
+        width: 100%;
+        min-width: 640px; /* Ensure table has a minimum width */
+      }
+      @media (min-width: 768px) {
+        .main-content {
+          margin-left: 250px;
+          padding: 2rem;
+        }
       }
       .nav-link {
         display: flex;
@@ -71,11 +103,24 @@
     </style>
   </head>
   <body class="bg-gray-50 min-h-screen">
+    <!-- Mobile header with menu toggle -->
+    <header class="bg-white shadow-sm md:hidden fixed top-0 left-0 right-0 z-40">
+      <div class="flex items-center justify-between px-4 py-3">
+        <button id="mobile-menu-button" class="text-gray-500 hover:text-gray-600 focus:outline-none">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <h1 class="text-lg font-semibold text-gray-800">Manage Loans</h1>
+        <div class="w-6"></div> <!-- Spacer for alignment -->
+      </div>
+    </header>
+
     <!-- Sidebar will be injected here by AdminSidebar.js -->
     <div id="admin-sidebar-container"></div>
     
     <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content pt-16 md:pt-0">
       <div class="flex justify-between items-center mb-8">
         <h2 class="text-2xl font-bold text-gray-800">Manage Loans</h2>
       </div>
@@ -107,8 +152,8 @@
 
       <!-- Loans Table -->
       <div class="bg-white shadow-sm rounded-lg overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+        <div class="table-container">
+          <table class="w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Book</th>
@@ -160,10 +205,17 @@
       </div>
     </div>
 
+
+
     <script type="module">
       import { isAdmin, isAuthenticated } from './src/api/auth.js';
       import { initAdminSidebar } from './src/components/AdminSidebar.js';
       import { showToast } from './src/utils/toast.js';
+      
+      // Initialize the admin sidebar
+      document.addEventListener('DOMContentLoaded', () => {
+        initAdminSidebar('loans');
+      });
       
       // Check if user is authenticated and is admin
       document.addEventListener('DOMContentLoaded', async () => {

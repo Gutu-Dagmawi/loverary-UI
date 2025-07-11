@@ -25,29 +25,46 @@
     <!-- Navigation -->
     <div id="nav"></div>
 
-    <main class="py-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main class="py-4 sm:py-8">
+      <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
         <!-- Page Header -->
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900">Browse Books</h1>
-          <p class="mt-2 text-sm text-gray-600">Find your next favorite read from our collection</p>
+        <div class="mb-6 sm:mb-8 px-2 sm:px-0">
+          <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Browse Books</h1>
+          <p class="mt-1 sm:mt-2 text-sm text-gray-600">Find your next favorite read from our collection</p>
         </div>
 
-        <!-- Minimalist & Elegant Search Bar with Button -->
-        <div class="max-w-2xl mx-auto mb-20">
-          <form class="flex items-center gap-2" autocomplete="off">
-            <input
-              type="text"
-              id="search"
-              class="flex-1 py-3 px-4 text-base text-gray-800 placeholder-gray-400 bg-white border border-gray-200 rounded-md focus:border-orange-400 focus:ring-0 focus:outline-none transition-colors duration-200 shadow-none"
-              placeholder="Search books by title, author, or genre..."
-            />
-            <button
-              type="submit"
-              class="px-5 py-2.5 bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors duration-200 text-base shadow-none"
-            >
-              Search
-            </button>
+        <!-- Search Bar with Button -->
+        <div class="max-w-3xl mx-auto mb-12 sm:mb-20 px-4 sm:px-6 lg:px-0">
+          <form class="w-full" autocomplete="off">
+            <div class="relative flex items-stretch w-full">
+              <!-- Search input -->
+              <div class="relative flex-grow">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg class="h-5 w-5 text-gray-400 group-focus-within/search-form:text-orange-500 transition-colors duration-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  id="search"
+                  class="block w-full h-12 pl-10 pr-4 text-base text-gray-800 placeholder-gray-400 bg-white border border-gray-200 rounded-lg sm:rounded-r-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all duration-200 shadow-sm"
+                  placeholder="Search books by title, author, or genre..."
+                  aria-label="Search books"
+                />
+              </div>
+              <!-- Search button -->
+              <div class="absolute inset-y-0 right-0 flex items-center pr-2 sm:relative sm:inset-auto sm:pr-0">
+                <button
+                  type="submit"
+                  class="h-12 w-28 text-base font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-lg sm:rounded-l-none sm:rounded-r-lg focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-orange-300 transition-all duration-200 shadow-sm hover:shadow"
+                >
+                  Search
+                </button>
+              </div>
+            </div>
+            <div class="mt-2 text-xs sm:text-sm text-gray-500 text-center sm:text-left px-1">
+              Try: "Science Fiction", "J.K. Rowling", or "Best Sellers"
+            </div>
           </form>
         </div>
 
@@ -61,16 +78,17 @@
         <!-- Welcome Message -->
         <div
           id="welcomeMessage"
-          class="flex flex-col items-center justify-center py-20 px-4 text-center"
+          class="flex flex-col items-center justify-center py-12 sm:py-20 px-4 text-center"
         >
-          <div class="max-w-md mx-auto">
-            <div class="w-60 h-60 mx-auto mb-8">
+          <div class="w-full max-w-md mx-auto">
+            <div class="w-40 h-40 sm:w-60 sm:h-60 mx-auto mb-6 sm:mb-8">
               <!-- Cute SVG Book Illustration -->
               <svg
                 class="w-full h-full"
                 viewBox="0 0 200 200"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
               >
                 <rect
                   x="30"
@@ -99,16 +117,16 @@
                 <path d="M90 110 Q100 115 110 110" stroke="#F59E42" stroke-width="2" fill="none" />
               </svg>
             </div>
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">Find Your Next Favorite Book</h2>
-            <p class="text-gray-600">
-              Search by title, author, or genre using the search bar above. We’ll help you discover
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">Find Your Next Favorite Book</h2>
+            <p class="text-sm sm:text-base text-gray-600 px-2">
+              Search by title, author, or genre using the search bar above. We'll help you discover
               amazing reads!
             </p>
           </div>
         </div>
 
         <!-- Book Grid (Initially hidden) -->
-        <div id="bookGrid" style="display: none" class="flex flex-wrap gap-6">
+        <div id="bookGrid" style="display: none" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5 px-2 sm:px-0">
           <!-- Book cards will be dynamically inserted here -->
         </div>
 
@@ -116,73 +134,43 @@
         <div
           id="pagination"
           style="display: none"
-          class="mt-10 flex items-center justify-between border-t border-gray-200 px-4 sm:px-0"
+          class="mt-8 sm:mt-10 border-t border-gray-200 px-2 sm:px-0"
         >
-          <div class="-mt-px flex w-0 flex-1">
-            <a
-              href="#"
-              class="inline-flex items-center border-t-2 border-transparent pt-4 pr-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            >
-              <svg
-                class="mr-3 h-5 w-5 text-gray-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
+          <div class="flex items-center justify-between pt-4">
+            <div class="flex flex-1 sm:flex-none justify-between sm:justify-start w-full sm:w-auto space-x-2">
+              <button
+                type="button"
+                class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50"
+                disabled
               >
-                <path
-                  fill-rule="evenodd"
-                  d="M18 10a.75.75 0 01-.75.75H4.66l2.1 1.95a.75.75 0 11-1.02 1.1l-3.5-3.25a.75.75 0 010-1.1l3.5-3.25a.75.75 0 111.02 1.1l-2.1 1.95h12.59A.75.75 0 0118 10z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-              Previous
-            </a>
-          </div>
-          <div class="hidden md:-mt-px md:flex">
-            <a
-              href="#"
-              class="inline-flex items-center border-t-2 border-orange-500 px-4 pt-4 text-sm font-medium text-orange-600"
-              >1</a
-            >
-            <a
-              href="#"
-              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              >2</a
-            >
-            <a
-              href="#"
-              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              >3</a
-            >
-            <span
-              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500"
-              >...</span
-            >
-            <a
-              href="#"
-              class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              >8</a
-            >
-          </div>
-          <div class="-mt-px flex w-0 flex-1 justify-end">
-            <a
-              href="#"
-              class="inline-flex items-center border-t-2 border-transparent pt-4 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            >
-              Next
-              <svg
-                class="ml-3 h-5 w-5 text-gray-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
+                <span class="sr-only">Previous</span>
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              
+              <div class="hidden sm:flex space-x-1">
+                <a href="#" class="relative z-10 inline-flex items-center border border-orange-500 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-600 focus:z-20">1</a>
+                <a href="#" class="relative inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">2</a>
+                <a href="#" class="relative hidden md:inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">3</a>
+                <span class="relative inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700">...</span>
+                <a href="#" class="relative hidden md:inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">8</a>
+              </div>
+              
+              <button
+                type="button"
+                class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
               >
-                <path
-                  fill-rule="evenodd"
-                  d="M2 10a.75.75 0 01.75-.75h12.59l-2.1-1.95a.75.75 0 111.02-1.1l3.5 3.25a.75.75 0 010 1.1l-3.5 3.25a.75.75 0 11-1.02-1.1l2.1-1.95H2.75A.75.75 0 012 10z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-            </a>
+                <span class="sr-only">Next</span>
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            
+            <div class="hidden sm:block text-sm text-gray-700">
+              Page <span class="font-medium">1</span> of <span class="font-medium">8</span>
+            </div>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { isAuthenticated, getCurrentUser, logout } from '../api/auth.js';
 import { showToast } from '../utils/toast.js';
 import { requireAuth } from '../utils/auth.js';
 import { getCsrfToken } from '../api/auth.js';
+import { getUserLoans } from '../api/loans.js';
 
 // Protect this route - members only
 (async () => {
@@ -17,94 +18,121 @@ import { getCsrfToken } from '../api/auth.js';
   }
 })();
 
-function initCheckout() {
-  // Initialize navigation
-  const navContainer = document.getElementById('nav');
-  if (navContainer) {
-    navContainer.innerHTML = renderNav({ active: 'checkout', isAuthenticated: isAuthenticated() });
-    setupNavigation();
+async function checkLoanLimit() {
+  try {
+    const loans = await getUserLoans();
+    const activeLoans = loans.filter(loan => !loan.return_date);
+    return activeLoans.length >= 3;
+  } catch (error) {
+    console.error('Error checking loan limit:', error);
+    return false;
   }
+}
 
-  // Set up logout button
-  const logoutButton = document.getElementById('logoutButton');
-  if (logoutButton) {
-    logoutButton.addEventListener('click', async (e) => {
-      e.preventDefault();
-      await logout();
-    });
-  }
+function showLoading() {
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const mainContent = document.getElementById('main-content');
+  if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+  if (mainContent) mainContent.classList.add('hidden');
+}
 
-  // Set current date in the checkout form (readonly)
-  const today = new Date();
-  const formattedToday = today.toISOString().split('T')[0];
-  const checkoutDateInput = document.getElementById('checkout-date');
-  if (checkoutDateInput) {
-    checkoutDateInput.value = formattedToday;
-    checkoutDateInput.readOnly = true;
-  }
+function hideLoading() {
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const mainContent = document.getElementById('main-content');
+  if (loadingOverlay) loadingOverlay.classList.add('opacity-0');
+  if (mainContent) mainContent.classList.remove('hidden');
+  
+  // Remove loading overlay from DOM after fade out
+  setTimeout(() => {
+    if (loadingOverlay) loadingOverlay.remove();
+  }, 300);
+}
 
-  // Set minimum due date to tomorrow
-  const dueDateInput = document.getElementById('due-date');
-  if (dueDateInput) {
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    dueDateInput.min = tomorrow.toISOString().split('T')[0];
-    dueDateInput.required = true;
-  }
-
-  // Get book data from URL parameters
-  const urlParams = new URLSearchParams(window.location.search);
-  const bookId = urlParams.get('book_id');
-  const barcode = urlParams.get('barcode');
-
-  // Pre-fill barcode if provided
-  if (barcode) {
-    const barcodeInput = document.getElementById('book-barcode');
-    if (barcodeInput) {
-      barcodeInput.value = barcode;
-      barcodeInput.readOnly = true;
+async function initCheckout() {
+  try {
+    showLoading();
+    
+    // Check loan limit first
+    const hasReachedLimit = await checkLoanLimit();
+    if (hasReachedLimit) {
+      showToast('You have reached the maximum number of active loans (3). Please return a book before checking out another one.', 'error');
+      setTimeout(() => {
+        window.location.href = 'loans.html';
+      }, 2000);
+      return;
     }
-  }
 
-  // If we have book data in session storage, use that
-  const sessionBook = sessionStorage.getItem('currentBook');
-  if (sessionBook) {
-    try {
-      const bookData = JSON.parse(sessionBook);
-      updateBookInfo(bookData);
-    } catch (e) {
-      console.error('Error parsing session book data:', e);
+    // Initialize navigation
+    const navContainer = document.getElementById('nav');
+    if (navContainer) {
+      navContainer.innerHTML = renderNav({ active: 'checkout', isAuthenticated: isAuthenticated() });
+      setupNavigation();
     }
-  } else if (bookId || barcode) {
-    // Otherwise, use URL parameters
-    const bookTitle = urlParams.get('title') || 'Book';
-    const bookAuthor = urlParams.get('author') || 'Unknown Author';
-    const coverImage = urlParams.get('cover_image') || '';
 
-    updateBookInfo({
-      id: bookId,
-      barcode: barcode,
-      title: bookTitle,
-      author: bookAuthor,
-      coverImage: coverImage,
-    });
+    // Set up logout button
+    setupLogoutButton();
+
+    // Set today's date as the default checkout date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('checkout-date').value = today;
+
+    // Set default due date (2 weeks from today)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14);
+    document.getElementById('due-date').min = today; // Prevent selecting past dates
+    document.getElementById('due-date').value = dueDate.toISOString().split('T')[0];
+
+    // Set up form submission
+    const form = document.getElementById('checkout-form');
+    if (form) {
+      form.addEventListener('submit', handleCheckout);
+    }
+    
+    // Hide loading and show content with a small delay for a smoother transition
+    setTimeout(hideLoading, 500);
+  } catch (error) {
+    console.error('Error initializing checkout:', error);
+    showToast('An error occurred while loading the checkout page. Please try again.', 'error');
+    // Still hide loading to show the error message
+    hideLoading();
   }
+    // Get book data from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookId = urlParams.get('book_id');
+    const barcode = urlParams.get('barcode');
 
-  // Set up form submission - using the form's ID to be more specific
-  const form = document.getElementById('checkout-form');
-  if (form) {
-    // Remove any existing event listeners to prevent duplicates
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
+    // Pre-fill barcode if provided
+    if (barcode) {
+      const barcodeInput = document.getElementById('book-barcode');
+      if (barcodeInput) {
+        barcodeInput.value = barcode;
+        barcodeInput.readOnly = true;
+      }
+    }
 
-    // Add the event listener to the new form
-    newForm.addEventListener('submit', handleCheckout);
+    // If we have book data in session storage, use that
+    const sessionBook = sessionStorage.getItem('currentBook');
+    if (sessionBook) {
+      try {
+        const bookData = JSON.parse(sessionBook);
+        updateBookInfo(bookData);
+      } catch (e) {
+        console.error('Error parsing session book data:', e);
+      }
+    } else if (bookId || barcode) {
+      // Otherwise, use URL parameters
+      const bookTitle = urlParams.get('title') || 'Book';
+      const bookAuthor = urlParams.get('author') || 'Unknown Author';
+      const coverImage = urlParams.get('cover_image') || '';
 
-    // Debug log
-    console.log('Form submission handler attached');
-  } else {
-    console.error('Checkout form not found');
-  }
+      updateBookInfo({
+        id: bookId,
+        barcode: barcode,
+        title: bookTitle,
+        author: bookAuthor,
+        coverImage: coverImage,
+      });
+    }
 }
 
 function updateBookInfo(bookData) {
