@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Loans - Loverary Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="src/style.css">
+    <style>
+      .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 50;
+        background-color: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease-in-out;
+      }
+      @media (max-width: 767px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+        .sidebar.translate-x-0 {
+          transform: translateX(0);
+        }
+      }
+      .main-content {
+        transition: margin-left 0.3s ease;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+      
+      /* Make tables responsive */
+      .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+      }
+      
+      table {
+        width: 100%;
+        min-width: 640px; /* Ensure table has a minimum width */
+      }
+      @media (min-width: 768px) {
+        .main-content {
+          margin-left: 250px;
+          padding: 2rem;
+        }
+      }
+      .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #4b5563;
+        border-radius: 0.375rem;
+        transition: all 0.15s ease;
+      }
+      .nav-link:hover {
+        background-color: #f3f4f6;
+        color: #111827;
+      }
+      .nav-link.active {
+        background-color: #f3f4f6;
+        color: #111827;
+        font-weight: 500;
+      }
+      .nav-link i {
+        margin-right: 0.75rem;
+        width: 1.25rem;
+        text-align: center;
+      }
+      .action-btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.15s ease;
+      }
+      .view-btn {
+        background-color: #3b82f6;
+        color: white;
+      }
+      .view-btn:hover {
+        background-color: #2563eb;
+      }
+      .return-btn {
+        background-color: #10b981;
+        color: white;
+      }
+      .return-btn:hover {
+        background-color: #059669;
+      }
+      .overdue {
+        background-color: #fef2f2;
+      }
+      .due-soon {
+        background-color: #fffbeb;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Mobile header with menu toggle -->
+    <header class="bg-white shadow-sm md:hidden fixed top-0 left-0 right-0 z-40">
+      <div class="flex items-center justify-between px-4 py-3">
+        <button id="mobile-menu-button" class="text-gray-500 hover:text-gray-600 focus:outline-none">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <h1 class="text-lg font-semibold text-gray-800">Manage Loans</h1>
+        <div class="w-6"></div> <!-- Spacer for alignment -->
+      </div>
+    </header>
+
+    <!-- Sidebar will be injected here by AdminSidebar.js -->
+    <div id="admin-sidebar-container"></div>
+    
+    <!-- Main Content -->
+    <div class="main-content pt-16 md:pt-0">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Manage Loans</h2>
+      </div>
+
+      <!-- Search and Filter -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search loans by book title, member name, or barcode..."
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >
+          </div>
+          <div class="flex items-center space-x-2">
+            <select id="statusFilter" class="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+              <option value="all">All Loans</option>
+              <option value="active">Active</option>
+              <option value="overdue">Overdue</option>
+              <option value="returned">Returned</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loans Table -->
+      <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+        <div class="table-container">
+          <table class="w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Book</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barcode</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Checkout Date</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="loansTableBody" class="bg-white divide-y divide-gray-200">
+              <!-- Loans will be loaded here -->
+              <tr>
+                <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                  <div class="flex justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-gray-700">
+                Showing <span id="startItem" class="font-medium">1</span> to <span id="endItem" class="font-medium">10</span> of <span id="totalItems" class="font-medium">0</span> results
+              </p>
+            </div>
+            <div>
+              <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                  <span class="sr-only">Previous</span>
+                  <i class="fas fa-chevron-left h-5 w-5"></i>
+                </button>
+                <div id="pageNumbers" class="flex">
+                  <!-- Page numbers will be inserted here -->
+                </div>
+                <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                  <span class="sr-only">Next</span>
+                  <i class="fas fa-chevron-right h-5 w-5"></i>
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <script type="module">
+      import { isAdmin, isAuthenticated } from './src/api/auth.js';
+      import { initAdminSidebar } from './src/components/AdminSidebar.js';
+      import { showToast } from './src/utils/toast.js';
+      
+      // Initialize the admin sidebar
+      document.addEventListener('DOMContentLoaded', () => {
+        initAdminSidebar('loans');
+      });
+      
+      // Check if user is authenticated and is admin
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (!isAuthenticated() || !isAdmin()) {
+          console.log('User is not authenticated or not an admin. Redirecting to login...');
+          // Store the current URL to redirect back after login
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        // Initialize the sidebar with 'loans' as active
+        initAdminSidebar('loans');
+        
+        // Load loans
+        await loadLoans();
+        
+        // Add event listeners
+        document.getElementById('searchInput').addEventListener('input', debounce(updateFilteredLoans, 300));
+        document.getElementById('statusFilter').addEventListener('change', updateFilteredLoans);
+        document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+        document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+      });
+      
+      // Pagination state
+      let currentPage = 1;
+      const itemsPerPage = 10;
+      let totalItems = 0;
+      
+      // Debounce function to limit API calls during search
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+      
+      // Store all loans for client-side filtering
+      let allLoans = [];
+      
+      // Filter loans based on current filters
+      function filterLoans(loans) {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        return loans.filter(loan => {
+          // Filter by status
+          if (statusFilter !== 'all') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dueDate = new Date(loan.due_date);
+            const isReturned = loan.status === 'returned';
+            const isOverdue = !isReturned && dueDate < today;
+            const isDueSoon = !isOverdue && !isReturned && 
+                            (dueDate - today) / (1000 * 60 * 60 * 24) <= 2;
+            
+            if (statusFilter === 'active' && isReturned) return false;
+            if (statusFilter === 'overdue' && !isOverdue) return false;
+            if (statusFilter === 'returned' && !isReturned) return false;
+            if (statusFilter === 'due_soon' && !isDueSoon) return false;
+          }
+          
+          // Filter by search term
+          if (searchTerm) {
+            const searchableText = [
+              loan.member_name || '',
+              loan.book_title || '',
+              loan.book_copy_barcode || ''
+            ].join(' ').toLowerCase();
+            
+            if (!searchableText.includes(searchTerm)) {
+              return false;
+            }
+          }
+          
+          return true;
+        });
+      }
+      
+      // Load loans from API
+      async function loadLoans() {
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) throw new Error('Not authenticated');
+          
+          // Show loading state
+          const tbody = document.getElementById('loansTableBody');
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                Loading loans...
+              </td>
+            </tr>
+          `;
+          
+          // Fetch all loans (no pagination on client side for now)
+          const response = await fetch('http://localhost:8000/api/circulation/allLoans', {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Failed to fetch loans');
+          }
+          
+          const data = await response.json();
+          allLoans = data.check_outs || [];
+          
+          // Apply filters and update UI
+          updateFilteredLoans();
+          
+        } catch (error) {
+          console.error('Error loading loans:', error);
+          showToast(error.message || 'Failed to load loans', 'error');
+          document.getElementById('loansTableBody').innerHTML = `
+            <tr>
+              <td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">
+                ${error.message || 'Failed to load loans. Please try again.'}
+              </td>
+            </tr>
+          `;
+        }
+      }
+      
+      // Apply filters and update the UI
+      function updateFilteredLoans() {
+        const filteredLoans = filterLoans(allLoans);
+        totalItems = filteredLoans.length;
+        updatePaginationInfo();
+        
+        // Get current page items
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const paginatedLoans = filteredLoans.slice(startIndex, startIndex + itemsPerPage);
+        
+        renderLoans(paginatedLoans);
+      }
+      
+      // Format date for display
+      function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+      
+      // Render loans in the table
+      function renderLoans(loans) {
+        const tbody = document.getElementById('loansTableBody');
+        
+        if (!loans || !loans.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                No loans found matching your criteria.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        tbody.innerHTML = loans.map(loan => {
+          const checkoutDate = new Date(loan.check_out_date);
+          const dueDate = new Date(loan.due_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Determine loan status
+          const isReturned = loan.status === 'returned';
+          const isOverdue = !isReturned && dueDate < today;
+          const isDueSoon = !isOverdue && !isReturned && 
+                           (dueDate - today) / (1000 * 60 * 60 * 24) <= 2;
+          
+          // Status badge
+          const statusBadge = isReturned 
+            ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Returned</span>'
+            : isOverdue 
+              ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Overdue</span>'
+              : isDueSoon
+                ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Due Soon</span>'
+                : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Active</span>';
+          
+          // Row styling
+          const rowClass = isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-yellow-50' : '';
+          
+          // Format dates
+          const formatDate = (dateString) => {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          };
+          
+          return `
+            <tr class="${rowClass} hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <div class="font-medium text-gray-900">Book ID: ${loan.book_copy_barcode || 'N/A'}</div>
+                <div class="text-xs text-gray-500">Checkout ID: ${loan.check_out_id || 'N/A'}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <div>Member ID: ${loan.member_id || 'N/A'}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <span class="font-mono bg-gray-100 px-2 py-1 rounded">${loan.book_copy_barcode || 'N/A'}</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${formatDate(loan.check_out_date)}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}">
+                ${formatDate(loan.due_date)}
+                ${isOverdue ? `
+                  <div class="text-xs text-red-500">
+                    ${Math.ceil((today - dueDate) / (1000 * 60 * 60 * 24))} days overdue
+                  </div>
+                ` : ''}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                ${statusBadge}
+                ${isReturned ? `
+                  <div class="text-xs text-gray-500 mt-1">
+                    Returned on ${formatDate(loan.updated_at)}
+                  </div>
+                ` : ''}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button onclick="viewLoanDetails('${loan.check_out_id}')" class="action-btn view-btn mr-2">
+                  <i class="fas fa-eye"></i> View
+                </button>
+                ${!isReturned ? `
+                  <button onclick="returnLoan('${loan.check_out_id}')" class="action-btn return-btn">
+                    <i class="fas fa-undo"></i> Return
+                  </button>
+                ` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+      
+      // Update pagination information
+      function updatePaginationInfo() {
+        const start = Math.min((currentPage - 1) * itemsPerPage + 1, totalItems);
+        const end = Math.min(currentPage * itemsPerPage, totalItems);
+        
+        document.getElementById('startItem').textContent = totalItems === 0 ? '0' : start;
+        document.getElementById('endItem').textContent = end;
+        document.getElementById('totalItems').textContent = totalItems;
+        
+        // Update pagination buttons
+        document.getElementById('prevPage').disabled = currentPage === 1;
+        document.getElementById('nextPage').disabled = end >= totalItems;
+        
+        // Update page numbers
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const pageNumbers = document.getElementById('pageNumbers');
+        pageNumbers.innerHTML = '';
+        
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        if (endPage - startPage + 1 < maxPagesToShow) {
+          startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+        
+        // Add page numbers
+        for (let i = startPage; i <= endPage; i++) {
+          const button = document.createElement('button');
+          button.textContent = i;
+          button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+            i === currentPage 
+              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' 
+              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+          }`;
+          button.addEventListener('click', () => {
+            currentPage = i;
+            updateFilteredLoans();
+          });
+          pageNumbers.appendChild(button);
+        }
+      }
+      
+      // Change page
+      function changePage(direction) {
+        const newPage = currentPage + direction;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        
+        if (newPage > 0 && newPage <= totalPages) {
+          currentPage = newPage;
+          updateFilteredLoans();
+        }
+      }
+      
+      // Global functions for buttons
+      window.viewLoanDetails = async (loanId) => {
+        // In a real app, you might show a modal with more details
+        showToast(`Viewing details for loan #${loanId}`, 'info');
+        console.log('View loan details:', loanId);
+      };
+      
+      window.returnLoan = async (loanId) => {
+        if (!confirm('Are you sure you want to mark this loan as returned?')) {
+          return;
+        }
+        
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) throw new Error('Not authenticated');
+          
+          const response = await fetch(`http://localhost:8000/api/circulation/check-in/${loanId}`, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Failed to return book');
+          }
+          
+          showToast('Book returned successfully!', 'success');
+          await loadLoans(); // Refresh the list
+          
+        } catch (error) {
+          console.error('Error returning book:', error);
+          showToast(error.message || 'Failed to return book', 'error');
+        }
+      };
+    </script>
+  </body>
+</html>

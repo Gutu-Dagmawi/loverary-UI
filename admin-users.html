@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Users - Loverary Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="csrf-token" content="">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="src/style.css">
+    <style>
+      .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 50;
+        background-color: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease-in-out;
+      }
+      @media (max-width: 767px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+        .sidebar.translate-x-0 {
+          transform: translateX(0);
+        }
+      }
+      .main-content {
+        transition: margin-left 0.3s ease;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+      
+      /* Make tables responsive */
+      .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+      }
+      
+      table {
+        width: 100%;
+        min-width: 640px; /* Ensure table has a minimum width */
+      }
+      @media (min-width: 768px) {
+        .main-content {
+          margin-left: 250px;
+          padding: 2rem;
+        }
+      }
+      .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #4b5563;
+        border-radius: 0.375rem;
+        transition: all 0.15s ease;
+      }
+      .nav-link:hover {
+        background-color: #f3f4f6;
+        color: #111827;
+      }
+      .nav-link.active {
+        background-color: #f3f4f6;
+        color: #111827;
+        font-weight: 500;
+      }
+      .nav-link i {
+        margin-right: 0.75rem;
+        width: 1.25rem;
+        text-align: center;
+      }
+      .action-btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.15s ease;
+      }
+      .view-btn {
+        background-color: #3b82f6;
+        color: white;
+      }
+      .view-btn:hover {
+        background-color: #2563eb;
+      }
+      .edit-btn {
+        background-color: #f59e0b;
+        color: white;
+      }
+      .edit-btn:hover {
+        background-color: #d97706;
+      }
+      .delete-btn {
+        background-color: #ef4444;
+        color: white;
+      }
+      .delete-btn:hover {
+        background-color: #dc2626;
+      }
+      .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+      }
+      .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Mobile header with menu toggle -->
+    <header class="bg-white shadow-sm md:hidden fixed top-0 left-0 right-0 z-40">
+      <div class="flex items-center justify-between px-4 py-3">
+        <button id="mobile-menu-button" class="text-gray-500 hover:text-gray-600 focus:outline-none">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <h1 class="text-lg font-semibold text-gray-800">Manage Users</h1>
+        <div class="w-6"></div> <!-- Spacer for alignment -->
+      </div>
+    </header>
+
+    <!-- Sidebar will be injected here by AdminSidebar.js -->
+    <div id="admin-sidebar-container"></div>
+    
+    <!-- Main Content -->
+    <div class="main-content pt-16 md:pt-0">
+      <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Manage Users</h2>
+        <p class="text-sm text-gray-500 mt-1">Users can only be created through the signup process.</p>
+      </div>
+
+      <!-- Search and Filter -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search users by name, email, or ID..."
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >
+          </div>
+          <div class="flex items-center space-x-2">
+            <select id="roleFilter" class="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+              <option value="all">All Roles</option>
+              <option value="admin">Admins</option>
+              <option value="librarian">Librarians</option>
+              <option value="member">Members</option>
+            </select>
+            <select id="statusFilter" class="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+        <div class="table-container">
+          <table class="w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member Since</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+              <!-- Users will be loaded here -->
+              <tr>
+                <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                  <div class="flex justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-gray-700">
+                Showing <span id="startItem" class="font-medium">1</span> to <span id="endItem" class="font-medium">10</span> of <span id="totalItems" class="font-medium">0</span> results
+              </p>
+            </div>
+            <div>
+              <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                  <span class="sr-only">Previous</span>
+                  <i class="fas fa-chevron-left h-5 w-5"></i>
+                </button>
+                <div id="pageNumbers" class="flex">
+                  <!-- Page numbers will be inserted here -->
+                </div>
+                <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                  <span class="sr-only">Next</span>
+                  <i class="fas fa-chevron-right h-5 w-5"></i>
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit User Modal -->
+    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 hidden overflow-y-auto" style="z-index: 1000;">
+      <div class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
+          <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Add New User</h3>
+          <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <!-- Modal Body -->
+        <form id="userForm" class="p-6 overflow-y-auto">
+          <input type="hidden" id="userId" name="id">
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="col-span-2 md:col-span-1">
+              <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+              <input type="text" id="firstName" name="first_name" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="col-span-2 md:col-span-1">
+              <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+              <input type="text" id="lastName" name="last_name" required
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="col-span-2">
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input type="email" id="email" name="email" required
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="col-span-2 md:col-span-1">
+              <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input type="tel" id="phone" name="phone"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div class="col-span-2 md:col-span-1">
+              <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+              <select id="role" name="role" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <option value="member">Member</option>
+                <option value="librarian">Librarian</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+            
+            <div class="col-span-2">
+              <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <textarea id="address" name="address" rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            
+            <div class="col-span-2">
+              <div class="flex items-center">
+                <input type="checkbox" id="isActive" name="is_active" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                <label for="isActive" class="ml-2 block text-sm text-gray-700">Active Account</label>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Inactive users cannot log in to the system.</p>
+            </div>
+            
+            <div id="passwordFields" class="col-span-2 space-y-4 border-t pt-4 mt-2">
+              <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="password" name="password"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Leave blank to keep current password">
+                <p class="mt-1 text-xs text-gray-500">Password must be at least 8 characters long.</p>
+              </div>
+              
+              <div>
+                <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="password_confirmation"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              </div>
+            </div>
+          </div>
+        </form>
+        
+        <!-- Modal Footer -->
+        <div class="p-4 border-t bg-gray-50 sticky bottom-0">
+          <div class="flex justify-end space-x-3">
+            <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Cancel
+            </button>
+            <button type="button" id="saveUserBtn" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Save User
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <script type="module">
+      import { isAdmin, isAuthenticated, getCsrfToken } from './src/api/auth.js';
+      import { initAdminSidebar } from './src/components/AdminSidebar.js';
+      import { showToast } from './src/utils/toast.js';
+      
+      // Initialize the admin sidebar
+      document.addEventListener('DOMContentLoaded', () => {
+        initAdminSidebar('users');
+      });
+      
+      // Check if user is authenticated and is admin
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (!isAuthenticated() || !isAdmin()) {
+          console.log('User is not authenticated or not an admin. Redirecting to login...');
+          // Store the current URL to redirect back after login
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        // Initialize the sidebar with 'users' as active
+        initAdminSidebar('users');
+        
+        // Load users
+        await loadUsers();
+        
+        // Add event listeners
+        document.getElementById('searchInput').addEventListener('input', debounce(loadUsers, 300));
+        document.getElementById('roleFilter').addEventListener('change', loadUsers);
+        document.getElementById('statusFilter').addEventListener('change', loadUsers);
+        document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+        document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+        document.getElementById('closeModal').addEventListener('click', () => closeUserModal());
+        document.getElementById('cancelBtn').addEventListener('click', () => closeUserModal());
+        
+        // Add event delegation for delete buttons
+        document.getElementById('usersTableBody').addEventListener('click', (e) => {
+          const deleteBtn = e.target.closest('.delete-user-btn');
+          if (deleteBtn) {
+            e.preventDefault();
+            const userId = deleteBtn.dataset.userId;
+            const userName = deleteBtn.dataset.userName || 'this user';
+            deleteUser(userId, userName);
+          }
+        });
+      });
+      
+      // Pagination state
+      let currentPage = 1;
+      const itemsPerPage = 10;
+      let totalItems = 0;
+      
+      // Debounce function to limit API calls during search
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+      
+      // Load users from API
+      async function loadUsers() {
+        const searchTerm = document.getElementById('searchInput').value;
+        const roleFilter = document.getElementById('roleFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) throw new Error('Not authenticated');
+          
+          // Build query parameters
+          const params = new URLSearchParams({
+            page: currentPage,
+            per_page: itemsPerPage,
+            ...(searchTerm && { search: searchTerm }),
+            ...(roleFilter !== 'all' && { role: roleFilter }),
+            ...(statusFilter !== 'all' && { status: statusFilter })
+          });
+          
+          const response = await fetch(`http://localhost:8000/api/members?${params}`, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include' // Include cookies for session
+          });
+          
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Failed to fetch users');
+          }
+          
+          const data = await response.json();
+          
+          // Use the members array from the response
+          const members = data.members || [];
+          totalItems = members.length; // Update total items count
+          
+          // Update pagination info
+          updatePaginationInfo();
+          
+          // Render users
+          renderUsers(members);
+          
+        } catch (error) {
+          console.error('Error loading users:', error);
+          showToast(error.message || 'Failed to load users', 'error');
+          document.getElementById('usersTableBody').innerHTML = `
+            <tr>
+              <td colspan="6" class="px-6 py-4 text-center text-sm text-red-500">
+                ${error.message || 'Failed to load users. Please try again.'}
+              </td>
+            </tr>
+          `;
+        }
+      }
+      
+      // Format date for display
+      function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+      
+      // Render users in the table
+      function renderUsers(users) {
+        const tbody = document.getElementById('usersTableBody');
+        
+        if (!users || !users.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                No users found matching your criteria.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        tbody.innerHTML = users.map(user => {
+          // Determine user role from the type field (Admin, Librarian, or default to Member)
+          const userType = user.type?.toLowerCase() || 'member';
+          const isAdmin = userType === 'admin';
+          
+          // For this API, we'll assume all users are active since there's no is_active field
+          const statusClass = 'status-active';
+          const statusText = 'Active';
+          
+          // Map the role for display
+          const roleText = isAdmin ? 'Administrator' : 
+                          userType === 'librarian' ? 'Librarian' : 'Member';
+                          
+          // Format creation date
+          const createdAt = formatDate(user.created_at);
+          
+          return `
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 font-medium">
+                    ${user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900">
+                      ${user.name || 'N/A'}
+                    </div>
+                    <div class="text-xs text-gray-500">ID: ${user.id || 'N/A'}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <div>${user.email || 'N/A'}</div>
+                <div class="text-xs text-gray-500">${user.phone || 'No phone'}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                  ${isAdmin ? 'bg-purple-100 text-purple-800' : 
+                    userType === 'librarian' ? 'bg-blue-100 text-blue-800' : 
+                    'bg-green-100 text-green-800'}">
+                  ${roleText}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                  ${statusText}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${createdAt}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                ${!isAdmin ? `
+                  <button data-user-id="${user.id}" data-user-name="${user.name || ''}" class="action-btn delete-user-btn" title="Delete User">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                ` : '<span class="text-gray-400">Admin</span>'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+      
+      // Update pagination information
+      function updatePaginationInfo() {
+        const start = Math.min((currentPage - 1) * itemsPerPage + 1, totalItems);
+        const end = Math.min(currentPage * itemsPerPage, totalItems);
+        
+        document.getElementById('startItem').textContent = totalItems === 0 ? '0' : start;
+        document.getElementById('endItem').textContent = end;
+        document.getElementById('totalItems').textContent = totalItems;
+        
+        // Update pagination buttons
+        document.getElementById('prevPage').disabled = currentPage === 1;
+        document.getElementById('nextPage').disabled = end >= totalItems;
+        
+        // Update page numbers
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const pageNumbers = document.getElementById('pageNumbers');
+        pageNumbers.innerHTML = '';
+        
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        if (endPage - startPage + 1 < maxPagesToShow) {
+          startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+        
+        // Add page numbers
+        for (let i = startPage; i <= endPage; i++) {
+          const button = document.createElement('button');
+          button.textContent = i;
+          button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+            i === currentPage 
+              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' 
+              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+          }`;
+          button.addEventListener('click', () => {
+            currentPage = i;
+            loadUsers();
+          });
+          pageNumbers.appendChild(button);
+        }
+      }
+      
+      // Change page
+      function changePage(delta) {
+        const newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= Math.ceil(totalItems / itemsPerPage)) {
+          currentPage = newPage;
+          loadUsers();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+      
+      // Open user modal for adding/editing
+      function openUserModal(user = null) {
+        const modal = document.getElementById('userModal');
+        const form = document.getElementById('userForm');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        if (user) {
+          // Edit mode
+          modalTitle.textContent = 'Edit User';
+          form.elements['id'].value = user.id || '';
+          form.elements['first_name'].value = user.first_name || '';
+          form.elements['last_name'].value = user.last_name || '';
+          form.elements['email'].value = user.email || '';
+          form.elements['phone'].value = user.phone || '';
+          form.elements['role'].value = user.role || 'member';
+          form.elements['address'].value = user.address || '';
+          form.elements['is_active'].checked = user.is_active !== false; // Default to true if not set
+          
+          // Show password fields but don't require them
+          document.getElementById('password').required = false;
+          document.getElementById('confirmPassword').required = false;
+        } else {
+          // Add new user mode
+          modalTitle.textContent = 'Add New User';
+          form.reset();
+          form.elements['is_active'].checked = true; // Default to active
+          
+          // Require password for new users
+          document.getElementById('password').required = true;
+          document.getElementById('confirmPassword').required = true;
+        }
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      
+      // Close user modal
+      function closeUserModal() {
+        const modal = document.getElementById('userModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      
+      // Save user (create or update)
+      async function saveUser() {
+        const form = document.getElementById('userForm');
+        const formData = new FormData(form);
+        const userData = Object.fromEntries(formData.entries());
+        
+        // Basic validation
+        if (userData.password && userData.password !== userData.password_confirmation) {
+          showToast('Passwords do not match', 'error');
+          return;
+        }
+        
+        // If it's a new user, password is required
+        if (!userData.id && !userData.password) {
+          showToast('Password is required for new users', 'error');
+          return;
+        }
+        
+        // Clean up data
+        if (!userData.id) {
+          delete userData.id; // Remove empty ID for new users
+        }
+        
+        // Convert is_active to boolean
+        userData.is_active = userData.is_active === 'on';
+        
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) throw new Error('Not authenticated');
+          
+          const isEdit = !!userData.id;
+          const url = isEdit 
+            ? `http://localhost:8000/api/members/${userData.id}`
+            : 'http://localhost:8000/api/members';
+          
+          const response = await fetch(url, {
+            method: isEdit ? 'PUT' : 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(userData)
+          });
+          
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `Failed to ${isEdit ? 'update' : 'create'} user`);
+          }
+          
+          showToast(`User ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
+          closeUserModal();
+          await loadUsers(); // Refresh the list
+          
+        } catch (error) {
+          console.error(`Error ${userData.id ? 'updating' : 'creating'} user:`, error);
+          showToast(error.message || `Failed to ${userData.id ? 'update' : 'create'} user`, 'error');
+        }
+      }
+      
+      // Global functions for buttons
+      window.viewUserDetails = async (userId) => {
+        // In a real app, you might show a modal with more details
+        showToast(`Viewing details for user #${userId}`, 'info');
+        console.log('View user details:', userId);
+      };
+      
+      window.editUser = async (userId) => {
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) throw new Error('Not authenticated');
+          
+          const response = await fetch(`http://localhost:8000/api/members/${userId}`, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Failed to fetch user details');
+          }
+          
+          const user = await response.json();
+          openUserModal(user);
+          
+        } catch (error) {
+          console.error('Error fetching user details:', error);
+          showToast(error.message || 'Failed to load user details', 'error');
+        }
+      };
+      
+      // Make deleteUser available globally
+      window.deleteUser = async function(userId, userName = 'this user') {
+        const confirmed = await Swal.fire({
+          title: 'Delete User',
+          text: `Are you sure you want to delete ${userName}? This action cannot be undone.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!',
+          cancelButtonText: 'Cancel',
+          reverseButtons: true
+        });
+
+        if (!confirmed.isConfirmed) return;
+
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) throw new Error('Not authenticated');
+          
+          // Get CSRF token using the auth.js utility
+          const csrfToken = await getCsrfToken();
+          
+          const response = await fetch(`http://localhost:8000/api/members/${userId}`, {
+            method: 'DELETE',
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-XSRF-TOKEN': csrfToken
+            },
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Failed to delete user');
+          }
+          
+          showToast('User deleted successfully', 'success');
+          loadUsers();
+          
+        } catch (error) {
+          console.error('Error deleting user:', error);
+          showToast(error.message || 'Failed to delete user', 'error');
+        }
+      }
+    </script>
+  </body>
+</html>

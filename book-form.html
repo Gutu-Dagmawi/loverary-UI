@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Form - Loverary Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+      /* Ensure sidebar has proper stacking context */
+      #admin-sidebar-container {
+        position: relative;
+        z-index: 10;
+      }
+      
+      .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40; /* Higher than most content */
+        overflow-y: auto;
+        transition: transform 0.3s ease-in-out;
+      }
+      
+      .main-content {
+        margin-left: 250px;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+      }
+      
+      /* Ensure form elements don't overflow */
+      @media (max-width: 768px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+        
+        .sidebar.open {
+          transform: translateX(0);
+        }
+        
+        .main-content {
+          margin-left: 0;
+        }
+      }
+    </style>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 z-50 hidden">
+      <div class="flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow-lg border-l-4 border-gray-300">
+        <div id="toast-icon" class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg">
+          <i id="toast-icon-svg" class="w-5 h-5"></i>
+        </div>
+        <div id="toast-message" class="ml-3 text-sm font-normal"></div>
+        <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8" onclick="document.getElementById('toast').classList.add('hidden')">
+          <span class="sr-only">Close</span>
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Mobile menu button -->
+    <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+    
+    <!-- Sidebar will be injected here by AdminSidebar.js -->
+    <div id="admin-sidebar-container"></div>
+    
+    <script type="module">
+      import { isAdmin, isAuthenticated, getCsrfToken } from './src/api/auth.js';
+      import { initAdminSidebar } from '/src/components/AdminSidebar.js';
+      
+      // Make getCsrfToken available globally for form submission
+      window.getCsrfToken = getCsrfToken;
+      
+      // Toast notification system
+      function showToast(message, type = 'info') {
+        const toast = document.getElementById('toast');
+        const toastIcon = document.getElementById('toast-icon');
+        const toastIconSvg = document.getElementById('toast-icon-svg');
+        const toastMessage = document.getElementById('toast-message');
+        
+        // Set message
+        toastMessage.textContent = message;
+        
+        // Set type-specific styles
+        const typeStyles = {
+          success: {
+            bg: 'bg-green-100',
+            border: 'border-green-500',
+            icon: 'fas fa-check-circle text-green-600',
+          },
+          error: {
+            bg: 'bg-red-100',
+            border: 'border-red-500',
+            icon: 'fas fa-exclamation-circle text-red-600',
+          },
+          warning: {
+            bg: 'bg-yellow-100',
+            border: 'border-yellow-500',
+            icon: 'fas fa-exclamation-triangle text-yellow-600',
+          },
+          info: {
+            bg: 'bg-blue-100',
+            border: 'border-blue-500',
+            icon: 'fas fa-info-circle text-blue-600',
+          }
+        };
+        
+        const style = typeStyles[type] || typeStyles.info;
+        
+        // Apply styles
+        toast.className = `fixed bottom-4 right-4 z-50 ${style.border} ${style.bg} p-4 rounded-lg shadow-lg border-l-4`;
+        toastIcon.className = `inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg ${style.bg}`;
+        toastIconSvg.className = style.icon;
+        
+        // Show toast
+        toast.classList.remove('hidden');
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          toast.classList.add('hidden');
+        }, 5000);
+      }
+      
+      // Make showToast available globally
+      window.showToast = showToast;
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Initialize the admin sidebar
+        initAdminSidebar('books');
+        
+        // Check if user is authenticated and is admin
+        if (!isAuthenticated() || !isAdmin()) {
+          console.log('User is not authenticated or not an admin. Redirecting to login...');
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        // Initialize the sidebar with 'books' as active
+        initAdminSidebar('books');
+        
+        // Get book ID from URL if in edit mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('id');
+        
+        if (bookId) {
+          document.getElementById('pageTitle').textContent = 'Edit Book';
+          await loadBook(bookId);
+        } else {
+          document.getElementById('pageTitle').textContent = 'Add New Book';
+          // Add first copy field by default
+          addBookCopy();
+        }
+        
+        // Setup form submission
+        const bookForm = document.getElementById('bookForm');
+        bookForm.addEventListener('submit', handleFormSubmit);
+        
+        // Setup add copy button
+        const addCopyBtn = document.getElementById('addCopyBtn');
+        addCopyBtn.addEventListener('click', addBookCopy);
+      });
+      
+      // Load book data for editing
+      async function loadBook(bookId) {
+        try {
+          const token = localStorage.getItem('auth_token');
+          const csrfToken = await getCsrfToken();
+          const response = await fetch(`http://localhost:8000/api/books/${bookId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': csrfToken
+            },
+            credentials: 'include'
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch book details');
+          }
+
+          const responseData = await response.json();
+          const book = responseData.data;
+          
+          if (!book) {
+            throw new Error('No book data found');
+          }
+          
+          // First, ensure we have a valid book ID
+          if (!book.book_id) {
+            throw new Error('No book_id found in the response');
+          }
+          
+          // Set the book ID in the form
+          const bookIdInput = document.getElementById('bookId');
+          if (!bookIdInput) {
+            throw new Error('Could not find bookId input element in the form');
+          }
+          
+          // Set the value and also set an attribute for debugging
+          bookIdInput.value = book.book_id;
+          bookIdInput.setAttribute('data-book-id', book.book_id);
+          console.log('Book ID set in form:', book.book_id);
+          
+          // Debug: Verify the value was set
+          console.log('Book ID input value after setting:', bookIdInput.value);
+          document.getElementById('title').value = book.title || '';
+          document.getElementById('author_id').value = book.author_id || '';
+          document.getElementById('isbn').value = book.isbn || '';
+          document.getElementById('publisher').value = book.publisher || '';
+          document.getElementById('publication_year').value = book.publication_year || '';
+          document.getElementById('category').value = book.category || '';
+          document.getElementById('summary').value = book.summary || '';
+          document.getElementById('edition').value = book.edition || '';
+          document.getElementById('pages').value = book.pages || '';
+          document.getElementById('language').value = book.language || '';
+          document.getElementById('availability_status').value = book.availability_status || 'available';
+          
+          // Handle book copies
+          const bookCopiesContainer = document.getElementById('bookCopiesContainer');
+          bookCopiesContainer.innerHTML = '';
+          
+          // Check both 'copies' and 'book_copies' for backward compatibility
+          const bookCopies = book.copies || book.book_copies || [];
+          
+          if (bookCopies.length > 0) {
+            bookCopies.forEach((copy, index) => {
+              const copyId = copy.id || `new-${index}`;
+              const copyHtml = `
+                <div class="book-copy border p-3 rounded-md mb-3" data-copy-id="${copyId}">
+                  <div class="flex justify-between items-start mb-2">
+                    <h4 class="text-sm font-medium">Book Copy #${index + 1}</h4>
+                    <button type="button" class="remove-copy text-red-500 hover:text-red-700">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-0.5">Barcode</label>
+                      <input type="text" name="book_copies[${index}][barcode]" value="${copy.barcode || ''}" 
+                      class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8"
+                      required maxlength="100"
+                      placeholder="Enter unique barcode">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-0.5">Status</label>
+                      <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="block text-xs text-gray-500 mb-0.5">Available</label>
+                        <select name="book_copies[${index}][is_available]" 
+                          class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
+                          <option value="1" ${copy.is_available ? 'selected' : ''}>Yes</option>
+                          <option value="0" ${!copy.is_available ? 'selected' : ''}>No</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-xs text-gray-500 mb-0.5">Condition</label>
+                        <input type="text" name="book_copies[${index}][condition]" value="${copy.condition || ''}"
+                          class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8"
+                          maxlength="255"
+                          placeholder="e.g., New, Good, Fair">
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                    <input type="hidden" name="book_copies[${index}][id]" value="${copyId}">
+                    <input type="text" name="book_copies[${index}][location]" value="${copy.location || ''}" 
+                      class="mt-2 text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8"
+                      maxlength="255"
+                      placeholder="Shelf location (optional)">
+                </div>
+              `;
+              bookCopiesContainer.insertAdjacentHTML('beforeend', copyHtml);
+            });
+          } else {
+            // If no copies, add one empty copy field
+            addBookCopy();
+          }
+          
+          // Add event listeners for remove buttons
+          document.querySelectorAll('.remove-copy').forEach(button => {
+            button.addEventListener('click', function() {
+              const copyDiv = this.closest('.book-copy');
+              const copyId = copyDiv.dataset.copyId;
+              
+              // If this is an existing copy (not a new one), add a hidden input to mark it for deletion
+              if (!copyId.startsWith('new-')) {
+                const deleteInput = document.createElement('input');
+                deleteInput.type = 'hidden';
+                deleteInput.name = `book_copies[${copyId}][_delete]`;
+                deleteInput.value = '1';
+                document.getElementById('bookForm').appendChild(deleteInput);
+              }
+              
+              copyDiv.remove();
+            });
+          });
+          
+        } catch (error) {
+          console.error('Error loading book:', error);
+          alert(`Error: ${error.message}`);
+          window.location.href = 'admin-books.html';
+        }
+      }
+      
+      // Handle form submission
+      async function handleFormSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData();
+        
+        // Collect all form data
+        const formElements = form.elements;
+        for (let element of formElements) {
+          if (element.name && !element.disabled) {
+            if (element.type === 'checkbox' || element.type === 'radio') {
+              if (element.checked) {
+                formData.append(element.name, element.value);
+              }
+            } else if (element.type === 'file') {
+              if (element.files.length > 0) {
+                formData.append(element.name, element.files[0]);
+              }
+            } else if (element.type === 'select-multiple') {
+              const options = element.options;
+              for (let i = 0; i < options.length; i++) {
+                if (options[i].selected) {
+                  formData.append(element.name, options[i].value);
+                }
+              }
+            } else {
+              formData.append(element.name, element.value);
+            }
+          }
+        }
+        
+        // Process book copies data
+        const bookCopies = [];
+        const copyElements = document.querySelectorAll('.book-copy');
+        
+        // Collect all book copies
+        copyElements.forEach((copyEl) => {
+          const barcode = copyEl.querySelector('input[name$="[barcode]"]')?.value.trim();
+          const isAvailable = copyEl.querySelector('select[name$="[is_available]"]')?.value === '1';
+          const condition = copyEl.querySelector('input[name$="[condition]"]')?.value.trim();
+          const location = copyEl.querySelector('input[name$="[location]"]')?.value.trim();
+          const id = copyEl.querySelector('input[name$="[id]"]')?.value;
+          
+          if (barcode) {
+            bookCopies.push({
+              id: id && !id.startsWith('new-') ? id : undefined,
+              barcode,
+              is_available: isAvailable,
+              condition,
+              location
+            });
+          }
+        });
+        
+        // Clear any existing book copies from form data
+        for (let key of formData.keys()) {
+          if (key.startsWith('book_copies')) {
+            formData.delete(key);
+          }
+        }
+        
+        // Add book copies to form data with proper structure
+        bookCopies.forEach((copy, index) => {
+          if (copy.id) {
+            formData.append(`book_copies[${index}][id]`, copy.id);
+          }
+          formData.append(`book_copies[${index}][barcode]`, copy.barcode);
+          formData.append(`book_copies[${index}][is_available]`, copy.is_available ? '1' : '0');
+          formData.append(`book_copies[${index}][condition]`, copy.condition);
+          formData.append(`book_copies[${index}][location]`, copy.location || '');
+        });
+        
+        // Get book ID for the API endpoint
+        const bookId = document.getElementById('bookId')?.value || '';
+        const method = bookId ? 'PUT' : 'POST';
+        const url = bookId 
+          ? `http://localhost:8000/api/books/${bookId}`
+          : 'http://localhost:8000/api/books';
+        
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.innerHTML;
+        
+        // Disable submit button and show loading state
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+          <i class="fas fa-spinner fa-spin mr-2"></i>
+          ${bookId ? 'Updating...' : 'Creating...'}
+        `;
+        
+        try {
+          // Get CSRF token and include it in the headers
+          const csrfToken = await getCsrfToken();
+          const token = localStorage.getItem('auth_token');
+          
+          // Log form data for debugging
+          console.log('=== Form Data to Submit ===');
+          for (let [key, value] of formData.entries()) {
+            const isFile = value instanceof File;
+            console.log(`${key}:`, isFile ? `[File: ${value.name}, ${value.size} bytes]` : value);
+          }
+          
+          console.log(`Submitting to: ${url} (${method})`);
+          
+          // Set up headers
+          const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-XSRF-TOKEN': csrfToken ? decodeURIComponent(csrfToken) : ''
+          };
+          
+          // Make the request
+          const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: formData,
+            credentials: 'include'  // Important for sending cookies with CORS
+          });
+          
+          const responseData = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(responseData.message || 'Failed to save book');
+          }
+          
+          console.log('Book saved successfully:', responseData);
+          
+          // Show success message and redirect to books list
+          alert(`Book ${bookId ? 'updated' : 'created'} successfully!`);
+          window.location.href = 'admin-books.html';
+        } catch (error) {
+          console.error('Error saving book:', error);
+          
+          // Show error message
+          const errorMessage = error.message || 'An unknown error occurred';
+          showToast(`Error: ${errorMessage}`, 'error');
+          
+          // Re-enable submit button
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
+      }
+      
+      // Add book copy fields
+      function addBookCopy() {
+        const bookCopiesContainer = document.getElementById('bookCopiesContainer');
+        const copyCount = document.querySelectorAll('.book-copy').length;
+        const newIndex = copyCount;
+        
+        const copyHtml = `
+          <div class="book-copy border p-3 rounded-md mb-3" data-copy-id="new-${newIndex}">
+            <div class="flex justify-between items-start mb-2">
+              <h4 class="text-sm font-medium">Book Copy #${newIndex + 1}</h4>
+              <button type="button" class="remove-copy text-red-500 hover:text-red-700">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">Barcode *</label>
+                <input type="text" name="book_copies[${newIndex}][barcode]" 
+                  class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8"
+                  required maxlength="100"
+                  placeholder="Enter unique barcode">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-0.5">Status</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-0.5">Available</label>
+                    <select name="book_copies[${newIndex}][is_available]" 
+                      class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8">
+                      <option value="1" selected>Yes</option>
+                      <option value="0">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-0.5">Condition</label>
+                    <input type="text" name="book_copies[${newIndex}][condition]"
+                      class="text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8"
+                      maxlength="255"
+                      placeholder="e.g., New, Good, Fair">
+                  </div>
+                </div>
+                <input type="text" name="book_copies[${newIndex}][location]" 
+                  class="mt-2 text-xs block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-8"
+                  maxlength="255"
+                  placeholder="Shelf location (optional)">
+              </div>
+            </div>
+            <input type="hidden" name="book_copies[${newIndex}][id]" value="new-${newIndex}">
+          </div>
+        `;
+        
+        bookCopiesContainer.insertAdjacentHTML('beforeend', copyHtml);
+        
+        // Add event listener for the new remove button
+        const newCopy = bookCopiesContainer.lastElementChild;
+        newCopy.querySelector('.remove-copy').addEventListener('click', function() {
+          newCopy.remove();
+        });
+      }
+    </script>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800" id="pageTitle">Add New Book</h1>
+          <nav class="flex" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+              <li class="inline-flex items-center">
+                <a href="admin-books.html" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
+                  <i class="fas fa-book mr-2"></i>
+                  Books
+                </a>
+              </li>
+              <li aria-current="page">
+                <div class="flex items-center">
+                  <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                  <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2" id="formTitle">Add New</span>
+                </div>
+              </li>
+            </ol>
+          </nav>
+        </div>
+        <div>
+          <a href="admin-books.html" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md inline-flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Back to Books
+          </a>
+        </div>
+      </div>
+
+      <div class="bg-white shadow rounded-lg p-6">
+        <form id="bookForm" method="POST" class="space-y-4" enctype="multipart/form-data">
+          <input type="hidden" id="bookId" name="id">
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div class="space-y-4">
+              <div>
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+                <input type="text" id="title" name="title" required maxlength="255" 
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-10 text-sm">
+              </div>
+              
+              <div>
+                <label for="author_id" class="block text-sm font-medium text-gray-700 mb-1">Author ID</label>
+                <input type="number" id="author_id" name="author_id"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  placeholder="Enter author ID (optional)">
+              </div>
+              
+              <div>
+                <label for="isbn" class="block text-sm font-medium text-gray-700 mb-1">ISBN <span class="text-red-500">*</span></label>
+                <input type="text" id="isbn" name="isbn" required maxlength="20" 
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-10 text-sm"
+                  placeholder="e.g., 978-3-16-148410-0"
+                  pattern="[0-9\-]{10,20}"
+                  title="Please enter a valid ISBN (10-20 digits, may include hyphens)">
+              </div>
+              
+              <div>
+                <label for="publication_year" class="block text-sm font-medium text-gray-700 mb-1">Publication Year</label>
+                <input type="number" id="publication_year" name="publication_year" min="1000" 
+                  max="${new Date().getFullYear() + 1}" 
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-10 text-sm"
+                  placeholder="e.g., 2023">
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="edition" class="block text-sm font-medium text-gray-700 mb-1">Edition</label>
+                  <input type="text" id="edition" name="edition"
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    placeholder="e.g., 1st, 2nd, Revised">
+                </div>
+                <div>
+                  <label for="pages" class="block text-sm font-medium text-gray-700 mb-1">Pages <span class="text-red-500">*</span></label>
+                  <input type="number" id="pages" name="pages" required min="1" max="10000"
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    placeholder="Number of pages">
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="language" class="block text-sm font-medium text-gray-700 mb-1">Language <span class="text-red-500">*</span></label>
+                  <input type="text" id="language" name="language" required maxlength="255"
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    placeholder="e.g., English">
+                </div>
+                <div>
+                  <label for="availability_status" class="block text-sm font-medium text-gray-700 mb-1">Availability Status <span class="text-red-500">*</span></label>
+                  <select id="availability_status" name="availability_status" required
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    <option value="1">Available</option>
+                    <option value="0">Unavailable</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label for="publisher" class="block text-sm font-medium text-gray-700 mb-1">Publisher</label>
+                <input type="text" id="publisher" name="publisher" maxlength="255" 
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-10 text-sm">
+              </div>
+              
+              <div>
+                <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category <span class="text-red-500">*</span></label>
+                <input type="text" id="category" name="category" required maxlength="255" 
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-10 text-sm"
+                  placeholder="e.g., Fiction, Science, History">
+              </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="space-y-4">
+              <div>
+                <label for="summary" class="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+                <textarea id="summary" name="summary" rows="8" 
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  placeholder="Enter a brief summary of the book"></textarea>
+              </div>
+              
+              <div class="relative">
+                <label for="cover_image" class="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
+                <div class="mt-1 flex items-center">
+                  <span class="inline-block h-32 w-24 rounded-md bg-gray-100 overflow-hidden">
+                    <img id="coverImagePreview" src="" alt="" class="h-full w-full object-cover hidden">
+                    <div id="noImagePreview" class="h-full w-full flex items-center justify-center text-gray-400">
+                      <i class="fas fa-book text-3xl"></i>
+                    </div>
+                  </span>
+                  <div class="ml-4 flex-1">
+                    <div class="flex items-center space-x-2">
+                      <label for="cover_image" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Choose File
+                      </label>
+                      <span id="file-name" class="text-sm text-gray-700 truncate max-w-xs">No file chosen</span>
+                    </div>
+                    <div id="file-info" class="mt-1 text-xs text-gray-500 hidden">
+                      <span id="file-size"></span> • <span id="file-type">PNG, JPG, JPEG</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Max. 2MB • Recommended: 500x800px</p>
+                    <input id="cover_image" name="cover_image" type="file" class="sr-only" accept="image/jpeg,image/png,image/jpg">
+                  </div>
+                </div>
+              </div>
+              
+              <div class="pt-4 border-t">
+                <div class="flex justify-between items-center mb-3">
+                  <h3 class="text-sm font-medium text-gray-900">Book Copies</h3>
+                  <button type="button" id="addCopyBtn" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-plus mr-1"></i> Add Copy
+                  </button>
+                </div>
+                
+                <div id="bookCopiesContainer" class="space-y-3">
+                  <!-- Book copies will be added here dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="pt-5 border-t border-gray-200">
+            <div class="flex justify-end space-x-3">
+              <a href="admin-books.html" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Cancel
+              </a>
+              <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <i class="fas fa-save mr-2"></i>
+                Save Book
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- CSRF Token Meta Tag -->
+    <meta name="csrf-token" content="">
+    
+    <script>
+      // Add CSRF token to all AJAX requests
+      document.addEventListener('DOMContentLoaded', function() {
+        // Get CSRF token from meta tag
+        const token = document.querySelector('meta[name="csrf-token"]').content;
+        
+        // Handle cover image preview
+        document.getElementById('cover_image').addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          const preview = document.getElementById('coverImagePreview');
+          const noPreview = document.getElementById('noImagePreview');
+          
+          if (file && file.type.match('image.*')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              preview.src = e.target.result;
+              preview.classList.remove('hidden');
+              noPreview.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+            
+            // Update the file name display
+            const fileName = file.name.length > 20 ? file.name.substring(0, 17) + '...' : file.name;
+            document.getElementById('file-name').textContent = fileName;
+            document.getElementById('file-size').textContent = formatFileSize(file.size);
+            document.getElementById('file-info').classList.remove('hidden');
+          } else {
+            preview.classList.add('hidden');
+            noPreview.classList.remove('hidden');
+            document.getElementById('file-info').classList.add('hidden');
+          }
+        });
+        
+        // Format file size
+        function formatFileSize(bytes) {
+          if (bytes === 0) return '0 Bytes';
+          const k = 1024;
+          const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Initialize with existing image if available
+        document.addEventListener('DOMContentLoaded', function() {
+          const existingImage = document.getElementById('coverImagePreview').getAttribute('data-src');
+          if (existingImage) {
+            const preview = document.getElementById('coverImagePreview');
+            const noPreview = document.getElementById('noImagePreview');
+            preview.src = existingImage;
+            preview.classList.remove('hidden');
+            noPreview.classList.add('hidden');
+            document.getElementById('file-info').classList.remove('hidden');
+          }
+        });
+        
+        // Set up CSRF token for all AJAX requests
+        if (token) {
+          const csrfToken = document.querySelector('meta[name="csrf-token"]');
+          if (csrfToken) {
+            csrfToken.setAttribute('content', token);
+          }
+          
+          // Update all forms to include the CSRF token
+          document.querySelectorAll('form').forEach(form => {
+            // Check if form already has a CSRF token input
+            if (!form.querySelector('input[name="_token"]')) {
+              const csrfInput = document.createElement('input');
+              csrfInput.type = 'hidden';
+              csrfInput.name = '_token';
+              csrfInput.value = token;
+              form.appendChild(csrfInput);
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

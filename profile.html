@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile - Loverary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="src/style.css" />
+    <script type="module">
+      import { requireAuth } from './src/utils/auth.js';
+
+      // Protect this route - members only
+      document.addEventListener('DOMContentLoaded', () => {
+        requireAuth('/login.html', { memberOnly: true });
+      });
+    </script>
+    <style>
+      .spinner {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid rgba(0, 0, 0, 0.3);
+        border-radius: 50%;
+        border-top-color: black;
+        animation: spin 1s ease-in-out infinite;
+        margin: 0 auto;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-100">
+      <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+        <a href="index.html" class="flex items-center gap-2">
+          <span class="text-2xl">📚</span>
+          <span class="text-xl font-medium text-gray-900">Loverary</span>
+        </a>
+        <div class="flex items-center space-x-4">
+          <button
+            id="logoutButton"
+            class="flex items-center text-sm text-gray-700 hover:text-gray-900"
+          >
+            <span>Sign out</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Profile Content -->
+    <main class="flex-1 py-12">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div class="px-4 py-5 sm:px-6 bg-gray-50">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Profile Information</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">Your personal account details</p>
+          </div>
+          <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+            <dl class="sm:divide-y sm:divide-gray-200">
+              <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Email address</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="userEmail">
+                  Loading...
+                </dd>
+              </div>
+              <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Member since</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="memberSince">
+                  Loading...
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { logout } from './src/api/auth.js';
+      import { showToast } from './src/utils/toast.js';
+      import { initAuth } from './src/utils/auth.js';
+
+      // Initialize authentication
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Require authentication for this page
+        if (!initAuth(true)) {
+          return;
+        }
+
+        // Get user data (in a real app, this would come from your API)
+        try {
+          // Simulate API call to get user data
+          // In a real app, you would fetch this from your backend
+          setTimeout(() => {
+            document.getElementById('userEmail').textContent = 'user@example.com';
+            document.getElementById('memberSince').textContent = 'January 1, 2023';
+          }, 500);
+        } catch (error) {
+          console.error('Error loading user data:', error);
+          showToast('Failed to load user data', 'error');
+        }
+
+        // Handle logout
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+          logoutButton.addEventListener('click', async e => {
+            e.preventDefault();
+            const button = e.target.closest('button');
+            const originalText = button.innerHTML;
+
+            try {
+              button.disabled = true;
+              button.innerHTML = '<span class="spinner"></span>';
+
+              await logout();
+              showToast('Successfully signed out', 'success');
+
+              // Redirect to login page after a short delay
+              setTimeout(() => {
+                window.location.href = 'login.html';
+              }, 1000);
+            } catch (error) {
+              console.error('Logout error:', error);
+              showToast('Failed to sign out. Please try again.', 'error');
+              button.disabled = false;
+              button.innerHTML = originalText;
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

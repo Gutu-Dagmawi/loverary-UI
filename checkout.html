@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borrow Book - Loverary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script type="module" src="/src/js/checkout.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#7C3AED',
+                        accent: '#10B981',
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <div id="nav"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 transition-opacity duration-300">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mx-auto mb-4"></div>
+        <p class="text-gray-700">Loading checkout...</p>
+      </div>
+    </div>
+
+    <!-- Main Content (initially hidden) -->
+    <div id="main-content" class="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8 hidden">
+      <div class="bg-white shadow-lg rounded-xl p-8">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Book Checkout</h1>
+        <!-- Book info will be inserted here by JavaScript -->
+        <form class="space-y-6" id="checkout-form">
+          <!-- Member ID is now handled automatically -->
+          <input type="hidden" id="member-id" name="member-id">
+          <div>
+            <label for="book-barcode" class="block text-sm font-medium text-gray-700">Book Copy Barcode</label>
+            <input type="text" id="book-barcode" name="book-barcode" required
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-400 focus:ring focus:ring-orange-100 focus:ring-opacity-50" placeholder="Enter or scan barcode">
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="checkout-date" class="block text-sm font-medium text-gray-700">Check Out Date</label>
+              <input type="text" id="checkout-date" name="checkout-date" readonly
+                class="mt-1 block w-full rounded-md border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed" value="<!-- JS will set today -->">
+            </div>
+            <div>
+              <label for="due-date" class="block text-sm font-medium text-gray-700">Due Date</label>
+              <input type="date" id="due-date" name="due-date" required
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-400 focus:ring focus:ring-orange-100 focus:ring-opacity-50">
+            </div>
+          </div>
+          <div class="pt-4">
+            <button type="submit"
+              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md text-base font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400 transition-colors duration-200">
+              Confirm Checkout
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+            <!-- Help Section -->
+            <div class="mt-8 bg-blue-50 p-4 rounded-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">Need help?</h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <p>If you have any questions about borrowing this book, please contact our support team.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white mt-12 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2023 Loverary. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+
+</body>
+</html>

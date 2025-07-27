@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account | Loverary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="src/style.css" />
+    <!-- Don't load the main index.js as it has redirect logic we want to avoid -->
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Simple Header -->
+    <header class="bg-white border-b border-gray-100">
+      <div class="max-w-5xl mx-auto px-4 py-4">
+        <a href="index.html" class="flex items-center gap-2">
+          <span class="text-2xl">📚</span>
+          <span class="text-xl font-medium text-gray-900">Loverary</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Signup Form -->
+    <main class="flex-1 flex items-center justify-center px-4 py-12">
+      <div class="w-full max-w-sm space-y-6 mx-auto">
+        <div class="text-center">
+          <h2 class="text-2xl font-semibold text-gray-900">Create an account</h2>
+          <p class="mt-1 text-sm text-gray-600">Join our community of book lovers</p>
+        </div>
+
+
+
+        <form id="signupForm" class="space-y-4" method="POST" novalidate onsubmit="event.preventDefault();">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="first-name" class="block text-sm font-medium text-gray-700 mb-1">
+                  First name
+                </label>
+                <input
+                  type="text"
+                  id="first-name"
+                  name="first-name"
+                  autocomplete="given-name"
+                  required
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                  placeholder="John"
+                />
+              </div>
+              <div>
+                <label for="last-name" class="block text-sm font-medium text-gray-700 mb-1">
+                  Last name
+                </label>
+                <input
+                  type="text"
+                  id="last-name"
+                  name="last-name"
+                  autocomplete="family-name"
+                  required
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                autocomplete="email"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="password" class="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                placeholder="••••••••"
+              />
+              <p class="mt-1 text-xs text-gray-500">
+                Must be at least 8 characters
+              </p>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="confirm-password" class="block text-sm font-medium text-gray-700">
+                  Confirm Password
+                </label>
+              </div>
+              <input
+                id="confirm-password"
+                name="confirm-password"
+                type="password"
+                autocomplete="new-password"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div class="flex items-center">
+              <input
+                id="terms"
+                name="terms"
+                type="checkbox"
+                required
+                class="h-4 w-4 text-gray-600 focus:ring-gray-400 border-gray-300 rounded"
+              />
+              <label for="terms" class="ml-2 block text-sm text-gray-700">
+                I agree to the <a href="#" class="text-gray-900 hover:text-gray-700">Terms</a> and
+                <a href="#" class="text-gray-900 hover:text-gray-700">Privacy Policy</a>
+              </label>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                <span id="signupButtonText">Create account</span>
+                <span id="signupSpinner" class="spinner hidden"></span>
+              </button>
+            </div>
+
+            <p class="mt-6 text-center text-sm text-gray-600">
+              Already have an account?
+              <a href="login.html" class="font-medium text-gray-900 hover:text-gray-700"> Sign in </a>
+            </p>
+          </form>
+        </div>
+      </div>
+    </main>
+    <script type="module">
+      import { renderNav, setupNavigation, setupLogoutButton, initMobileMenu } from './src/utils/nav.js';
+      import { isAuthenticated } from './src/api/auth.js';
+      import { clearAuthState } from './src/utils/authState.js';
+      
+      // Clear any previous auth state to ensure a fresh signup
+      clearAuthState();
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        const navContainer = document.getElementById('nav');
+        if (navContainer) {
+          navContainer.innerHTML = renderNav({
+            active: 'signup',
+            isAuthenticated: false, // Force not authenticated for signup
+          });
+          setupNavigation();
+          setupLogoutButton();
+          // Initialize mobile menu
+          initMobileMenu();
+        }
+
+        // Handle form submission
+        const signupForm = document.querySelector('form');
+        if (signupForm) {
+          signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(signupForm);
+            
+            try {
+              // Add your signup API call here
+              // For example:
+              // const response = await fetch('/api/signup', {
+              //   method: 'POST',
+              //   body: formData
+              // });
+              // const data = await response.json();
+              // if (response.ok) {
+              //   window.location.href = '/login.html';
+              // }
+              
+              // For now, just redirect to login after a short delay
+              setTimeout(() => {
+                window.location.href = '/login.html';
+              }, 1000);
+              
+            } catch (error) {
+              console.error('Signup error:', error);
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
